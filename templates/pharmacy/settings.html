@@ -4,6 +4,15 @@
     <meta charset="UTF-8">
     <title>Настройки аптеки — Military Med Docs</title>
     <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .settings-list { list-style: none; padding: 0; margin: 0; }
+        .settings-item { 
+            display: flex; justify-content: space-between; align-items: center; 
+            padding: 10px 0; border-bottom: 1px solid #eee; 
+        }
+        .settings-item:last-child { border-bottom: none; }
+        .settings-actions { display: flex; gap: 5px; }
+    </style>
 </head>
 <body>
 <div class="container">
@@ -15,35 +24,67 @@
     {% if request.query_params.get('message') %}
         <div class="alert alert-success">{{ request.query_params.get('message') }}</div>
     {% endif %}
+    {% if request.query_params.get('error') %}
+        <div class="alert alert-error">{{ request.query_params.get('error') }}</div>
+    {% endif %}
 
     <div class="info-grid">
         <!-- Группы -->
         <div class="card">
             <h2>Группы препаратов (Теги)</h2>
-            <form action="/pharmacy/settings/category" method="post" style="display: flex; gap: 10px; margin-bottom: 1rem;">
+            <form action="/pharmacy/settings/category" method="post" style="display: flex; gap: 10px; margin-bottom: 1.5rem;">
                 <input type="text" name="name" placeholder="Например: Давление" required style="flex: 1; padding: 0.5rem;">
                 <button type="submit" class="btn btn-primary">Добавить</button>
             </form>
-            <ul style="padding-left: 1.2rem;">
-                {% for c in categories %}
-                    <li>{{ c.name }}</li>
-                {% endfor %}
-            </ul>
+
+            {% if categories %}
+                <ul class="settings-list">
+                    {% for c in categories %}
+                    <li class="settings-item">
+                        <span>{{ c.name }}</span>
+                        <div class="settings-actions">
+                            <a href="/pharmacy/settings/category/{{ c.id }}/edit" class="btn btn-secondary btn-small">✏️</a>
+                            <form action="/pharmacy/settings/category/{{ c.id }}/delete" method="post" style="display:inline;" onsubmit="return confirm('Удалить группу {{ c.name }}?');">
+                                <button type="submit" class="btn btn-danger btn-small">🗑️</button>
+                            </form>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="muted">Групп пока нет.</p>
+            {% endif %}
         </div>
 
         <!-- Места хранения -->
         <div class="card">
             <h2>Места хранения</h2>
-            <form action="/pharmacy/settings/location" method="post" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 1rem;">
+            <form action="/pharmacy/settings/location" method="post" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 1.5rem;">
                 <input type="text" name="name" placeholder="Например: Шкаф А-1" required style="padding: 0.5rem;">
-                <input type="text" name="description" placeholder="Примечание (температурный режим и т.д.)" style="padding: 0.5rem;">
+                <input type="text" name="description" placeholder="Примечание (температурный режим)" style="padding: 0.5rem;">
                 <button type="submit" class="btn btn-primary">Добавить</button>
             </form>
-            <ul style="padding-left: 1.2rem;">
-                {% for l in locations %}
-                    <li><strong>{{ l.name }}</strong> <span class="muted">{{ l.description or '' }}</span></li>
-                {% endfor %}
-            </ul>
+
+            {% if locations %}
+                <ul class="settings-list">
+                    {% for l in locations %}
+                    <li class="settings-item">
+                        <div>
+                            <strong>{{ l.name }}</strong><br>
+                            <span class="muted">{{ l.description or '—' }}</span>
+                        </div>
+                        <div class="settings-actions">
+                            <a href="/pharmacy/settings/location/{{ l.id }}/edit" class="btn btn-secondary btn-small">✏️</a>
+                            <form action="/pharmacy/settings/location/{{ l.id }}/delete" method="post" style="display:inline;" onsubmit="return confirm('Удалить место {{ l.name }}?');">
+                                <button type="submit" class="btn btn-danger btn-small">🗑️</button>
+                            </form>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="muted">Мест пока нет.</p>
+            {% endif %}
         </div>
     </div>
 </div>

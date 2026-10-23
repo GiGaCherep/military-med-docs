@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Редактирование группы — Аптека</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container-narrow">
+    <div class="topbar">
+        <h1>Редактировать группу</h1>
+        <a href="/pharmacy/settings" class="btn btn-secondary">Отмена</a>
+    </div>
+
+    {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+    <form class="card" action="/pharmacy/settings/category/{{ cat.id }}/edit" method="post">
+        <div class="field">
+            <label for="name">Название группы *</label>
+            <input type="text" id="name" name="name" value="{{ cat.name }}" required>
+        </div>
+        
+        <div class="edit-actions">
+            <button type="submit" class="btn btn-primary">Сохранить</button>
+            <a href="/pharmacy/settings" class="btn btn-secondary">Отмена</a>
+        </div>
+    </form>
+</div>
+</body>
+</html>

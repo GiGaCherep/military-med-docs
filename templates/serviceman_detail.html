@@ -13,7 +13,8 @@
             <p class="muted">{{ sm.rank }} · {{ sm.unit }} ({{ sm.military_unit }})</p>
         </div>
         <div class="user-info">
-            <a href="/medical/new?serviceman_id={{ sm.id }}" class="btn btn-primary">+ Медзапись</a>
+            <button type="button" class="btn btn-primary" onclick="openDispenseModal()">💊 Выдать лекарство</button>
+            <a href="/medical/new?serviceman_id={{ sm.id }}" class="btn btn-secondary">+ Медзапись</a>
             <a href="/servicemen" class="btn btn-secondary">К списку</a>
         </div>
     </div>
@@ -85,22 +86,48 @@
         {% endif %}
     </div>
 
+    <!-- Выданные лекарства -->
+    <div class="card" style="margin-bottom: 1.5rem;">
+        <h2>Выданные медикаменты ({{ dispensed_meds|length }})</h2>
+        {% if not dispensed_meds %}
+            <p class="muted">Лекарства не выдавались.</p>
+        {% else %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Дата выдачи</th>
+                        <th>Препарат</th>
+                        <th>Количество</th>
+                        <th>Причина</th>
+                        <th>Кто выдал</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in dispensed_meds %}
+                    <tr>
+                        <td>{{ t.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                        <td>
+                            <a href="/pharmacy/{{ t.medication.id }}" class="username-link">{{ t.medication.name }}</a>
+                        </td>
+                        <td><span class="text-danger">{{ t.amount }} шт.</span></td>
+                        <td>{{ t.reason }}</td>
+                        <td>{{ t.user.username }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </div>
+
     <!-- Прикрепленные документы -->
     <div class="card">
         <h2>Прикреплённые документы ({{ documents|length }})</h2>
-        
         {% if not documents %}
             <p class="muted">К военнослужащему не прикреплено ни одного документа.</p>
         {% else %}
             <table>
                 <thead>
-                    <tr>
-                        <th>Дата</th>
-                        <th>Название</th>
-                        <th>Тип</th>
-                        <th>Гриф</th>
-                        <th>Статус</th>
-                    </tr>
+                    <tr><th>Дата</th><th>Название</th><th>Тип</th><th>Гриф</th><th>Статус</th></tr>
                 </thead>
                 <tbody>
                     {% for d in documents %}
@@ -109,9 +136,7 @@
                         <td><a href="/documents/{{ d.id }}" class="username-link">{{ d.title }}</a></td>
                         <td>{{ d.doc_type }}</td>
                         <td>{{ d.classification }}</td>
-                        <td>
-                            <span class="badge badge-muted">{{ status_labels.get(d.status, d.status) }}</span>
-                        </td>
+                        <td><span class="badge badge-muted">{{ status_labels.get(d.status, d.status) }}</span></td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -119,5 +144,49 @@
         {% endif %}
     </div>
 </div>
+
+<!-- Модальное окно выдачи лекарства -->
+<div id="dispense-modal" class="modal-backdrop hidden">
+    <div class="modal">
+        <h3>Выдача лекарства: {{ sm.full_name }}</h3>
+        
+        <form action="/servicemen/{{ sm.id }}/dispense" method="post">
+            <div class="field">
+                <label for="medication_id">Препарат *</label>
+                <select id="medication_id" name="medication_id" required>
+                    <option value="">— выберите препарат —</option>
+                    {% for med in medications %}
+                        <option value="{{ med.id }}">{{ med.name }} (остаток: {{ med.current_stock }} шт.)</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="field">
+                <label for="amount">Количество (шт.) *</label>
+                <input type="number" id="amount" name="amount" min="1" value="1" required>
+            </div>
+
+            <div class="field">
+                <label for="reason">Причина / Диагноз *</label>
+                <input type="text" id="reason" name="reason" required placeholder="Например: ОРВИ, головная боль...">
+            </div>
+            
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeDispenseModal()">Отмена</button>
+                <button type="submit" class="btn btn-primary">Списать со склада</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openDispenseModal() {
+        document.getElementById('dispense-modal').classList.remove('hidden');
+        document.getElementById('medication_id').focus();
+    }
+    function closeDispenseModal() {
+        document.getElementById('dispense-modal').classList.add('hidden');
+    }
+</script>
 </body>
 </html>

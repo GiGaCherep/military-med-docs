@@ -59,30 +59,26 @@ class Serviceman(Base):
     documents = relationship("Document", back_populates="serviceman")
     medical_records = relationship("MedicalRecord", back_populates="serviceman")
     outpatient_records = relationship("OutpatientRecord", back_populates="serviceman")
+    stock_transactions = relationship("StockTransaction", back_populates="serviceman")
 
 
 class Document(Base):
     __tablename__ = "documents"
 
     id = Column(Integer, primary_key=True, index=True)
-
     title = Column(String(255), nullable=False)
     doc_type = Column(String(50), nullable=False)
     doc_number = Column(String(64), nullable=True)
     doc_date = Column(Date, nullable=True)
-
     unit = Column(String(128), nullable=True)
     military_unit = Column(String(128), nullable=True)
-
     classification = Column(String(50), nullable=False)
     author_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     serviceman_id = Column(Integer, ForeignKey("servicemen.id"), nullable=True, index=True)
-
     file_name = Column(String(255), nullable=True)
     file_path = Column(String(512), nullable=True)
     file_size = Column(Integer, nullable=True)
     file_mime = Column(String(128), nullable=True)
-
     description = Column(Text, nullable=True)
     status = Column(String(32), nullable=False, default="draft")
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -99,17 +95,14 @@ class MedicalRecord(Base):
     id = Column(Integer, primary_key=True, index=True)
     serviceman_id = Column(Integer, ForeignKey("servicemen.id"), nullable=False, index=True)
     doctor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-
     record_type = Column(String(32), nullable=False, default="admission")
     is_infectious = Column(Boolean, default=False, nullable=False)
-
     diagnosis = Column(String(255), nullable=False)
     icd_code = Column(String(16), nullable=True)
     complaints = Column(Text, nullable=True)
     treatment = Column(Text, nullable=True)
     outcome = Column(String(64), nullable=True)
     triage_color = Column(String(16), nullable=True)
-
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     serviceman = relationship("Serviceman", back_populates="medical_records")
@@ -122,14 +115,12 @@ class OutpatientRecord(Base):
     id = Column(Integer, primary_key=True, index=True)
     serviceman_id = Column(Integer, ForeignKey("servicemen.id"), nullable=False, index=True)
     doctor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-
     visit_date = Column(Date, nullable=False)
     diagnosis = Column(String(255), nullable=False)
     icd_code = Column(String(16), nullable=True)
     complaints = Column(Text, nullable=True)
     treatment = Column(Text, nullable=True)
     outcome = Column(String(64), nullable=True)
-    
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -240,9 +231,12 @@ class StockTransaction(Base):
     medication_id = Column(Integer, ForeignKey("medications.id"), nullable=False, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     
+    serviceman_id = Column(Integer, ForeignKey("servicemen.id"), nullable=True, index=True)
+
     amount = Column(Integer, nullable=False)
     reason = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     medication = relationship("Medication", back_populates="transactions")
     user = relationship("User")
+    serviceman = relationship("Serviceman", back_populates="stock_transactions")

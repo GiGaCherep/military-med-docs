@@ -335,7 +335,8 @@ async def serviceman_detail(
         db.query(Serviceman)
         .options(
             joinedload(Serviceman.documents).joinedload(Document.author),
-            joinedload(Serviceman.medical_records).joinedload(MedicalRecord.doctor)
+            joinedload(Serviceman.medical_records).joinedload(MedicalRecord.doctor),
+            joinedload(Serviceman.stock_transactions).joinedload(StockTransaction.medication)
         )
         .filter(Serviceman.id == serviceman_id)
         .first()
@@ -359,17 +360,59 @@ async def serviceman_detail(
         "blue": ("Радиационное поражение", "badge-primary"),
     }
 
+    medications = db.query(Medication).filter(Medication.current_stock > 0).order_by(Medication.name).all()
+    dispensed_meds = [t for t in sm.stock_transactions if t.amount < 0]
+
     return render(
         "serviceman_detail.html", request,
         current_user=current_user,
         sm=sm,
         documents=accessible_docs,
         medical_records=medical_records,
+        dispensed_meds=dispensed_meds,
+        medications=medications,
         status_labels=STATUS_LABELS,
         triage_labels=triage_labels,
         error=request.query_params.get("error"),
         message=request.query_params.get("message"),
     )
+
+@app.post("/servicemen/{serviceman_id}/dispense")
+async def serviceman_dispense_medication(
+    serviceman_id: int,
+    medication_id: int = Form(...),
+    amount: int = Form(...),
+    reason: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_web)
+):
+    sm = db.query(Serviceman).filter(Serviceman.id == serviceman_id).first()
+    med = db.query(Medication).filter(Medication.id == medication_id).first()
+    
+    if not sm or not med:
+        return RedirectResponse(url=f"/servicemen/{serviceman_id}?error=Пациент+или+препарат+не+найден", status_code=303)
+    
+    if amount <= 0:
+        return RedirectResponse(url=f"/servicemen/{serviceman_id}?error=Количество+должно+быть+больше+0", status_code=303)
+        
+    if med.current_stock < amount:
+        return RedirectResponse(url=f"/servicemen/{serviceman_id}?error=Недостаточно+препарата+на+складе+(остаток:+{med.current_stock})", status_code=303)
+        
+    med.current_stock -= amount
+    
+    txn = StockTransaction(
+        medication_id=med.id,
+        user_id=current_user.id,
+        serviceman_id=sm.id,
+        amount=-amount, 
+        reason=f"Назначение: {reason}"
+    )
+    db.add(txn)
+    
+    audit(db, current_user, "medication.dispense", "medication", med.id, {"serviceman": sm.full_name, "amount": amount})
+    db.commit()
+    
+    return RedirectResponse(url=f"/servicemen/{serviceman_id}?message=Лекарство+успешно+списано", status_code=303)
 
 
 # --- Медицинские записи и журналы ---
@@ -553,7 +596,7 @@ async def outpatient_edit_submit(
 async def pharmacy_index(
     request: Request, 
     q: str = "", 
-    category_id: int = None,
+    category_id: str = "",
     db: Session = Depends(get_db), 
     current_user: User = Depends(get_current_user_web)
 ):
@@ -563,15 +606,15 @@ async def pharmacy_index(
 
     query = db.query(Medication)
 
-    if category_id:
-        query = query.filter(Medication.category_id == category_id)
+    selected_category = None
+    if category_id and category_id.isdigit():
+        selected_category = int(category_id)
+        query = query.filter(Medication.category_id == selected_category)
     
     if q:
         query = query.filter(Medication.name.ilike(f"%{q}%"))
-        if not query.first() and not category_id:
+        if not query.first() and not selected_category:
             ai_result = pharma_service.search_disease_info(q)
-    else:
-        pass
 
     medications = query.order_by(Medication.name).all()
 
@@ -582,7 +625,7 @@ async def pharmacy_index(
         q=q, 
         ai_result=ai_result, 
         categories=categories, 
-        selected_category=category_id,
+        selected_category=selected_category,
         message=request.query_params.get("message"),
         error=request.query_params.get("error")
     )
@@ -627,6 +670,82 @@ async def add_location(name: str = Form(...), description: str = Form(""), db: S
         db.commit()
     return RedirectResponse(url="/pharmacy/settings?message=Место+добавлено", status_code=303)
 
+# --- Редактирование и удаление ГРУПП ---
+
+@app.get("/pharmacy/settings/category/{cat_id}/edit", response_class=HTMLResponse)
+async def edit_category_form(cat_id: int, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_web)):
+    cat = db.query(MedicationCategory).filter(MedicationCategory.id == cat_id).first()
+    if not cat:
+        return RedirectResponse(url="/pharmacy/settings?error=Группа+не+найдена", status_code=303)
+    return render("pharmacy/category_edit.html", request, current_user=current_user, cat=cat, error=None)
+
+@app.post("/pharmacy/settings/category/{cat_id}/edit")
+async def edit_category_submit(cat_id: int, request: Request, name: str = Form(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user_web)):
+    cat = db.query(MedicationCategory).filter(MedicationCategory.id == cat_id).first()
+    if not cat:
+        return RedirectResponse(url="/pharmacy/settings?error=Группа+не+найдена", status_code=303)
+    
+    # Проверка на уникальность имени
+    if db.query(MedicationCategory).filter(MedicationCategory.name == name, MedicationCategory.id != cat_id).first():
+        return render("pharmacy/category_edit.html", request, current_user=current_user, cat=cat, error="Группа с таким названием уже существует")
+
+    cat.name = name
+    db.commit()
+    return RedirectResponse(url="/pharmacy/settings?message=Группа+обновлена", status_code=303)
+
+@app.post("/pharmacy/settings/category/{cat_id}/delete")
+async def delete_category(cat_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_web)):
+    cat = db.query(MedicationCategory).filter(MedicationCategory.id == cat_id).first()
+    if not cat:
+        return RedirectResponse(url="/pharmacy/settings?error=Группа+не+найдена", status_code=303)
+    
+    # Запрет на удаление, если к группе привязаны препараты
+    if cat.medications:
+        return RedirectResponse(url="/pharmacy/settings?error=Нельзя+удалить+группу,+к+ней+привязаны+препараты", status_code=303)
+    
+    db.delete(cat)
+    db.commit()
+    return RedirectResponse(url="/pharmacy/settings?message=Группа+удалена", status_code=303)
+
+
+# --- Редактирование и удаление МЕСТ ХРАНЕНИЯ ---
+
+@app.get("/pharmacy/settings/location/{loc_id}/edit", response_class=HTMLResponse)
+async def edit_location_form(loc_id: int, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_web)):
+    loc = db.query(StorageLocation).filter(StorageLocation.id == loc_id).first()
+    if not loc:
+        return RedirectResponse(url="/pharmacy/settings?error=Место+не+найдено", status_code=303)
+    return render("pharmacy/location_edit.html", request, current_user=current_user, loc=loc, error=None)
+
+@app.post("/pharmacy/settings/location/{loc_id}/edit")
+async def edit_location_submit(loc_id: int, request: Request, name: str = Form(...), description: str = Form(""), db: Session = Depends(get_db), current_user: User = Depends(get_current_user_web)):
+    loc = db.query(StorageLocation).filter(StorageLocation.id == loc_id).first()
+    if not loc:
+        return RedirectResponse(url="/pharmacy/settings?error=Место+не+найдено", status_code=303)
+    
+    # Проверка на уникальность имени
+    if db.query(StorageLocation).filter(StorageLocation.name == name, StorageLocation.id != loc_id).first():
+        return render("pharmacy/location_edit.html", request, current_user=current_user, loc=loc, error="Место с таким названием уже существует")
+
+    loc.name = name
+    loc.description = description or None
+    db.commit()
+    return RedirectResponse(url="/pharmacy/settings?message=Место+обновлено", status_code=303)
+
+@app.post("/pharmacy/settings/location/{loc_id}/delete")
+async def delete_location(loc_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_web)):
+    loc = db.query(StorageLocation).filter(StorageLocation.id == loc_id).first()
+    if not loc:
+        return RedirectResponse(url="/pharmacy/settings?error=Место+не+найдено", status_code=303)
+    
+    # Запрет на удаление, если к месту привязаны препараты
+    if loc.medications:
+        return RedirectResponse(url="/pharmacy/settings?error=Нельзя+удалить+место,+к+нему+привязаны+препараты", status_code=303)
+    
+    db.delete(loc)
+    db.commit()
+    return RedirectResponse(url="/pharmacy/settings?message=Место+удалено", status_code=303)
+
 @app.get("/pharmacy/new", response_class=HTMLResponse)
 async def pharmacy_new(request: Request, prefill_name: str = "", db: Session = Depends(get_db), current_user: User = Depends(get_current_user_web)):
     categories = db.query(MedicationCategory).order_by(MedicationCategory.name).all()
@@ -640,7 +759,6 @@ async def pharmacy_new_submit(
     category_id: int = Form(None), location_id: int = Form(None),
     db: Session = Depends(get_db), current_user: User = Depends(get_current_user_web)
 ):
-    # Убрано автоматическое заполнение
     info = {"indications": "", "contraindications": "", "interactions": "", "side_effects": ""}
     
     med = Medication(
@@ -804,10 +922,10 @@ async def pharmacy_medication_detail(
 
     transactions = (
         db.query(StockTransaction)
-        .options(joinedload(StockTransaction.user))
+        .options(joinedload(StockTransaction.user), joinedload(StockTransaction.serviceman))
         .filter(StockTransaction.medication_id == med_id)
         .order_by(StockTransaction.created_at.desc())
-        .limit(10)
+        .limit(20)
         .all()
     )
 

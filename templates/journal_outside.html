@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Журнал помощи вне МП — Military Med Docs</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+    <div class="topbar">
+        <h1>Журнал помощи вне МП</h1>
+        <div class="user-info">
+            <a href="/medical/new" class="btn btn-primary">+ Новая запись</a>
+            <a href="/medical/journals" class="btn btn-secondary">К журналам</a>
+        </div>
+    </div>
+
+    {% if not records %}
+        <div class="card"><p class="muted">Записей пока нет.</p></div>
+    {% else %}
+    <table>
+        <thead>
+            <tr>
+                <th>Дата/Время</th>
+                <th>Военнослужащий</th>
+                <th>Диагноз</th>
+                <th>Оказанная помощь</th>
+                <th>Исход</th>
+                <th>Врач</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in records %}
+            <tr>
+                <td>{{ r.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                <td>
+                    <a href="/servicemen/{{ r.serviceman.id }}" class="username-link"><strong>{{ r.serviceman.full_name }}</strong></a><br>
+                    <span class="muted">{{ r.serviceman.rank }}, {{ r.serviceman.service_number }}</span>
+                </td>
+                <td>{{ r.diagnosis }}</td>
+                <td>{{ r.treatment or '—' }}</td>
+                <td>{{ r.outcome or '—' }}</td>
+                <td>{{ r.doctor.username }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+</body>
+</html>

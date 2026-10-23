@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Регистрация документа — Military Med Docs</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container-narrow">
+    <h1>Регистрация документа</h1>
+    <p class="muted">Все поля с звёздочкой (*) обязательны.</p>
+
+    {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+    <form class="card" action="/documents/new" method="post" enctype="multipart/form-data">
+        <div class="field">
+            <label for="title">Название документа *</label>
+            <input type="text" id="title" name="title" required minlength="3" maxlength="255"
+                   placeholder="Например, Приказ №124-М о медобеспечении">
+        </div>
+
+        <div class="field">
+            <label for="doc_type">Тип документа *</label>
+            <select id="doc_type" name="doc_type" required>
+                <option value="">— выберите —</option>
+                {% for t in doc_types %}
+                    <option value="{{ t }}">{{ t }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="field-row">
+            <div class="field">
+                <label for="doc_number">Номер</label>
+                <input type="text" id="doc_number" name="doc_number" maxlength="64" placeholder="124-М">
+            </div>
+            <div class="field">
+                <label for="doc_date">Дата документа</label>
+                <input type="date" id="doc_date" name="doc_date">
+            </div>
+        </div>
+
+        <div class="field-row">
+            <div class="field">
+                <label for="unit">Подразделение</label>
+                <input type="text" id="unit" name="unit" maxlength="128" placeholder="Медицинская рота">
+            </div>
+            <div class="field">
+                <label for="military_unit">Воинская часть</label>
+                <input type="text" id="military_unit" name="military_unit" maxlength="128" placeholder="в/ч 12345">
+            </div>
+        </div>
+
+        <div class="field">
+            <label for="classification">Гриф доступа *</label>
+            <select id="classification" name="classification" required>
+                {% for c in classifications %}
+                    <option value="{{ c }}">{{ c }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="field">
+            <div class="field">
+    <label for="serviceman_id">Привязать к военнослужащему (опционально)</label>
+    <select id="serviceman_id" name="serviceman_id">
+        <option value="">— Не привязан (общий документ) —</option>
+        {% for sm in servicemen %}
+            <option value="{{ sm.id }}">{{ sm.full_name }} ({{ sm.service_number }})</option>
+        {% endfor %}
+    </select>
+</div>
+            <label for="author_id">Автор / исполнитель *</label>
+            <select id="author_id" name="author_id" required>
+                {% for u in users %}
+                    <option value="{{ u.id }}" {% if u.id == current_user.id %}selected{% endif %}>
+                        {{ u.username }} ({{ u.role.name }})
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="field">
+            <label for="description">Краткое описание / основание</label>
+            <textarea id="description" name="description" rows="3"
+                      placeholder="1–2 предложения для поиска"></textarea>
+        </div>
+
+        <div class="field">
+            <label for="file">Файл (PDF, JPG, PNG, DOCX, до 20 МБ)</label>
+            <input type="file" id="file" name="file" accept=".pdf,.jpg,.jpeg,.png,.docx">
+        </div>
+
+        <div class="edit-actions">
+            <button type="submit" class="btn btn-primary">Зарегистрировать</button>
+            <a href="/dashboard" class="btn btn-secondary">Отмена</a>
+        </div>
+    </form>
+</div>
+</body>
+</html>

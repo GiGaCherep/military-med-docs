@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Документы — Military Med Docs</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+    <div class="topbar">
+        <h1>Список документов</h1>
+        <a href="/documents/new" class="btn btn-primary">+ Зарегистрировать</a>
+    </div>
+
+    {% if not documents %}
+        <div class="card"><p class="muted">Документов пока нет.</p></div>
+    {% else %}
+    <table>
+        <thead>
+            <tr>
+                <th>№</th>
+                <th>Название</th>
+                <th>Тип</th>
+                <th>Гриф</th>
+                <th>Автор</th>
+                <th>Дата</th>
+                <th>Статус</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in documents %}
+            <tr>
+                <td>{{ d.id }}</td>
+                <td><a href="/documents/{{ d.id }}" class="username-link">{{ d.title }}</a></td>
+                <td>{{ d.doc_type }}</td>
+                <td>{{ d.classification }}</td>
+                <td>{{ d.author.username }}</td>
+                <td>{{ d.created_at.strftime('%d.%m.%Y') }}</td>
+                <td><span class="badge badge-muted">{{ status_labels.get(d.status, d.status) }}</span></td>
+                <td><a href="/documents/{{ d.id }}" class="btn btn-secondary">Открыть</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+</body>
+</html>

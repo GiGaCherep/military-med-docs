@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Панель управления — Шторм 28 Docs</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <h2 class="sidebar-title">Шторм 28 Docs</h2>
+        <hr class="sidebar-sep">
+        <nav class="sidebar-nav">
+    <a href="/dashboard" class="sidebar-link active">
+        <span class="icon">📋</span> Документы
+    </a>
+    <a href="/documents/new" class="sidebar-link">
+        <span class="icon">➕</span> Новый документ
+    </a>
+    <a href="/servicemen" class="sidebar-link">
+        <span class="icon">👥</span> Военнослужащие
+    </a>
+    <a href="/medical/new" class="sidebar-link">
+        <span class="icon">🩺</span> Медзапись
+    </a>
+    <a href="/medical/journals" class="sidebar-link">
+        <span class="icon">📖</span> Журналы учёта
+    </a>
+    <a href="/notifications" class="sidebar-link">
+        <span class="icon">🔔</span> Уведомления
+        {% if unread_notifications and unread_notifications > 0 %}
+            <span class="badge badge-warning">{{ unread_notifications }}</span>
+        {% endif %}
+    </a>
+    <a href="/pharmacy" class="sidebar-link"><span class="icon">💊</span> Аптека</a>
+    {% if current_user.role.name == 'admin' %}
+        <a href="/admin/users" class="sidebar-link">
+            <span class="icon">⚙️</span> Пользователи
+        </a>
+        <a href="/admin/audit" class="sidebar-link">
+            <span class="icon">📜</span> Аудит
+        </a>
+    {% endif %}
+        </nav>
+        <div class="sidebar-footer">
+            <form action="/logout" method="post">
+                <button type="submit" class="sidebar-logout">🚪 Выйти</button>
+            </form>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <header class="main-header">
+            <h1>Панель управления</h1>
+            <span class="user-badge">{{ current_user.username }} · {{ current_user.role.name }}</span>
+        </header>
+
+        {% if message %}<div class="alert alert-success">{{ message }}</div>{% endif %}
+        {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+        <section class="stats-grid">
+            <div class="stat-card"><div class="stat-value">{{ stats.total }}</div><div class="stat-label">Всего документов</div></div>
+            <div class="stat-card"><div class="stat-value">{{ stats.last_week }}</div><div class="stat-label">Новые за неделю</div></div>
+            <div class="stat-card"><div class="stat-value">{{ stats.on_review }}</div><div class="stat-label">На проверке</div></div>
+        </section>
+
+        <section class="card">
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>№</th>
+                            <th>Название</th>
+                            <th>Тип</th>
+                            <th>Гриф</th>
+                            <th>Автор</th>
+                            <th>Дата</th>
+                            <th>Статус</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in documents %}
+                        <tr>
+                            <td>{{ d.id }}</td>
+                            <td><a href="/documents/{{ d.id }}" class="username-link">{{ d.title }}</a></td>
+                            <td>{{ d.doc_type }}</td>
+                            <td>{{ d.classification }}</td>
+                            <td>{{ d.author.username }}</td>
+                            <td>{{ d.created_at.strftime('%d.%m.%Y') }}</td>
+                            <td><span class="badge badge-muted">{{ status_labels.get(d.status, d.status) }}</span></td>
+                            <td><a href="/documents/{{ d.id }}" class="btn btn-secondary">Открыть</a></td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="8" class="muted">Документов пока нет. <a href="/documents/new">Зарегистрировать первый</a></td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+</div>
+</body>
+</html>

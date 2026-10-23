@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ doc.title }} — Military Med Docs</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+    <div class="topbar">
+        <div>
+            <h1>{{ doc.title }}</h1>
+            <p class="muted">
+                {{ doc.doc_type }}
+                {% if doc.doc_number %} · № {{ doc.doc_number }}{% endif %}
+                {% if doc.doc_date %} · от {{ doc.doc_date.strftime('%d.%m.%Y') }}{% endif %}
+            </p>
+        </div>
+        <div class="user-info"><a href="/dashboard" class="btn btn-secondary">На главную</a></div>
+    </div>
+
+    {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+    {% if message %}<div class="alert alert-success">{{ message }}</div>{% endif %}
+
+    <div class="card" style="margin-bottom: 1.5rem;">
+        <h2>Реквизиты</h2>
+        <table>
+            <tbody>
+                <tr><th style="width:200px;">Статус</th>
+                    <td><span class="badge badge-muted">{{ status_labels.get(doc.status, doc.status) }}</span></td></tr>
+                <tr><th>Тип</th><td>{{ doc.doc_type }}</td></tr>
+                <tr><th>Номер</th><td>{{ doc.doc_number or '—' }}</td></tr>
+                <tr><th>Дата документа</th><td>{{ doc.doc_date.strftime('%d.%m.%Y') if doc.doc_date else '—' }}</td></tr>
+                <tr><th>Гриф доступа</th><td>{{ doc.classification }}</td></tr>
+                <tr><th>Подразделение</th><td>{{ doc.unit or '—' }}</td></tr>
+                <tr><th>Воинская часть</th><td>{{ doc.military_unit or '—' }}</td></tr>
+                <tr><th>Автор</th><td>{{ doc.author.username }} ({{ doc.author.role.name }})</td></tr>
+                <tr><th>Дата регистрации</th><td>{{ doc.created_at.strftime('%d.%m.%Y %H:%M') }}</td></tr>
+                {% if doc.description %}
+                    <tr><th>Описание</th><td>{{ doc.description }}</td></tr>
+                {% endif %}
+                {% if doc.file_name %}
+                    <tr><th>Файл</th>
+                        <td>
+                            <a href="/{{ doc.file_path }}" target="_blank">{{ doc.file_name }}</a>
+                            <span class="muted">({{ (doc.file_size / 1024) | round(1) }} КБ)</span>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card" style="margin-bottom: 1.5rem;">
+        <h2>История согласований</h2>
+        {% if doc.approvals %}
+            <table>
+                <thead><tr><th>Дата</th><th>Кто</th><th>Переход</th><th>Комментарий</th></tr></thead>
+                <tbody>
+                    {% for a in doc.approvals %}
+                    <tr>
+                        <td>{{ a.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                        <td>{{ a.approver.username }}</td>
+                        <td>{{ status_labels.get(a.from_status, a.from_status) }} → {{ status_labels.get(a.to_status, a.to_status) }}</td>
+                        <td>{{ a.comment or '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}<p class="muted">Ещё не было согласований.</p>{% endif %}
+    </div>
+
+    <div class="card" style="margin-bottom: 1.5rem;">
+        <h2>Подписи</h2>
+        {% if doc.signatures %}
+            <table>
+                <thead><tr><th>Дата</th><th>ФИО</th><th>Роль</th><th>Хеш</th></tr></thead>
+                <tbody>
+                    {% for s in doc.signatures %}
+                    <tr>
+                        <td>{{ s.signed_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                        <td>{{ s.signer_full_name }}</td>
+                        <td>{{ s.signer_role }}</td>
+                        <td><code title="{{ s.content_hash }}">{{ s.content_hash[:16] }}…</code></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}<p class="muted">Документ ещё не подписан.</p>{% endif %}
+
+        {% if can_sign %}
+            <hr style="margin: 1rem 0; border:none; border-top:1px solid #eee;">
+            <form action="/documents/{{ doc.id }}/sign" method="post">
+                <div class="field">
+                    <label for="full_name">ФИО подписанта *</label>
+                    <input type="text" id="full_name" name="full_name" required placeholder="Иванов Иван Иванович">
+                </div>
+                <button type="submit" class="btn btn-primary">Подписать</button>
+            </form>
+        {% endif %}
+    </div>
+
+    {% if available_transitions %}
+    <div class="card">
+        <h2>Согласование</h2>
+        <form action="/documents/{{ doc.id }}/status" method="post">
+            <div class="field">
+                <label>Текущий статус</label>
+                <input type="text" value="{{ status_labels.get(doc.status, doc.status) }}" disabled>
+            </div>
+            <div class="field">
+                <label for="to_status">Новый статус *</label>
+                <select id="to_status" name="to_status" required onchange="toggleComment()">
+                    {% for from_st, to_st in available_transitions %}
+                        <option value="{{ to_st }}">{{ status_labels.get(to_st, to_st) }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field">
+                <label for="comment">Комментарий согласующего</label>
+                <textarea id="comment" name="comment" rows="3" placeholder="Обязателен при отклонении / возврате на доработку"></textarea>
+                <div class="hint">Минимум 5 символов при отклонении / возврате.</div>
+            </div>
+            <div class="edit-actions">
+                <button type="submit" class="btn btn-primary">Применить</button>
+                <a href="/dashboard" class="btn btn-secondary">Отмена</a>
+            </div>
+        </form>
+    </div>
+    {% else %}
+    <div class="card"><p class="muted">У вас нет прав на изменение статуса этого документа.</p></div>
+    {% endif %}
+</div>
+<script>
+    function toggleComment() {
+        var sel = document.getElementById('to_status');
+        var ta = document.getElementById('comment');
+        var required = sel.value === 'rejected' || sel.value === 'draft';
+        ta.required = required;
+        if (required) ta.focus();
+    }
+    toggleComment();
+</script>
+</body>
+</html>

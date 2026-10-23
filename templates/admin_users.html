@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Администрирование пользователей</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+    <div class="topbar">
+        <div>
+            <h1>Управление учётными записями</h1>
+            <p class="muted">Система медицинского документооборота</p>
+        </div>
+        <div class="user-info">
+            <span>Вы вошли как <strong>{{ current_user.username }}</strong> ({{ current_user.role.name }})</span>
+            <a href="/dashboard" class="btn btn-secondary">На главную</a>
+            <form action="/logout" method="post" class="inline-form">
+                <button class="btn btn-secondary" type="submit">Выйти</button>
+            </form>
+        </div>
+    </div>
+
+    {% if message %}<div class="alert alert-success">{{ message }}</div>{% endif %}
+    {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+    <h2>Добавить пользователя</h2>
+    <form class="create-form" action="/admin/users" method="post">
+        <div class="row">
+            <div class="field">
+                <label for="username">Логин</label>
+                <input type="text" id="username" name="username" required minlength="3" maxlength="32" placeholder="Например, doctor_ivanov">
+            </div>
+            <div class="field">
+                <label for="password">Пароль</label>
+                <input type="password" id="password" name="password" required minlength="12" maxlength="128" placeholder="Минимум 12 символов">
+            </div>
+            <div class="field">
+                <label for="role_id">Роль</label>
+                <select id="role_id" name="role_id" required>
+                    {% for role in roles %}
+                        <option value="{{ role.id }}">{{ role.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field" style="flex: 0 0 auto;">
+                <label class="checkbox-row">
+                    <input type="checkbox" name="is_active" value="1" checked> Активен
+                </label>
+            </div>
+            <div class="field" style="flex: 0 0 auto;">
+                <button type="submit" class="btn btn-primary">Создать</button>
+            </div>
+        </div>
+    </form>
+
+    <h2>Список пользователей ({{ users|length }})</h2>
+    {% if users %}
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Логин</th>
+                <th>Роль</th>
+                <th>Статус</th>
+                <th style="width: 380px;">Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for u in users %}
+            <tr>
+                <td>{{ u.id }}</td>
+                <td>
+                    <a class="username-link" href="/admin/users/{{ u.id }}/edit">{{ u.username }}</a>
+                </td>
+                <td>{{ u.role.name }}</td>
+                <td>
+                    {% if u.is_active %}
+                        <span class="status-active">Активен</span>
+                    {% else %}
+                        <span class="status-inactive">Деактивирован</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div class="row-actions">
+                        {% if u.id == current_user.id %}
+                            <span class="muted">это вы</span>
+                        {% else %}
+                            <a href="/admin/users/{{ u.id }}/edit" class="btn btn-secondary">Изменить</a>
+                            {% if u.is_active %}
+                                <form action="/admin/users/{{ u.id }}/deactivate" method="post" class="inline-form" onsubmit="return confirm('Деактивировать пользователя {{ u.username }}?');">
+                                    <button type="submit" class="btn btn-danger">Деактивировать</button>
+                                </form>
+                            {% else %}
+                                <form action="/admin/users/{{ u.id }}/activate" method="post" class="inline-form">
+                                    <button type="submit" class="btn btn-primary">Активировать</button>
+                                </form>
+                            {% endif %}
+                            <button type="button" class="btn btn-danger"
+                                    onclick="openDeleteModal('{{ u.id }}', '{{ u.username }}')">
+                                Удалить
+                            </button>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p class="muted">Пользователей нет.</p>
+    {% endif %}
+</div>
+
+<!-- Модальное окно удаления -->
+<div id="delete-modal" class="modal-backdrop" style="display:none;">
+    <div class="modal">
+        <h3>Удаление пользователя</h3>
+        <p>
+            Это действие <strong>нельзя отменить</strong>.<br>
+            Учётная запись <strong id="del-username"></strong> будет удалена из базы.
+        </p>
+        <form id="delete-form" method="post">
+            <div class="field">
+                <label for="confirm_username">
+                    Введите логин для подтверждения:
+                </label>
+                <input type="text" id="confirm_username" name="confirm_username" required autocomplete="off">
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Отмена</button>
+                <button type="submit" class="btn btn-danger">Удалить навсегда</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openDeleteModal(id, username) {
+        document.getElementById('del-username').textContent = username;
+        document.getElementById('delete-form').action = '/admin/users/' + id + '/delete';
+        document.getElementById('confirm_username').value = '';
+        document.getElementById('delete-modal').style.display = 'flex';
+        document.getElementById('confirm_username').focus();
+    }
+    function closeDeleteModal() {
+        document.getElementById('delete-modal').style.display = 'none';
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Шторм 28 Docs — Вход</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="login-wrapper">
+    <div class="login-card">
+        <h1>Шторм 28 Docs</h1>
+        <p class="subtitle">Система документооборота для военных медицинских документов</p>
+
+        <form action="/login" method="post">
+            <div class="field">
+                <label for="username">Логин</label>
+                <input type="text" id="username" name="username" required
+                       placeholder="Например, admin" autocomplete="username">
+            </div>
+            <div class="field">
+                <label for="password">Пароль</label>
+                <input type="password" id="password" name="password" required
+                       placeholder="Минимум 12 символов" autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn btn-primary">Войти</button>
+        </form>
+
+        {% if error %}<p class="error">{{ error }}</p>{% endif %}
+        {% if success %}<p class="success">{{ success }}</p>{% endif %}
+    </div>
+</div>
+</body>
+</html>

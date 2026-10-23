@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Подбор лечения — Military Med Docs</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container-narrow">
+    <div class="topbar">
+        <h1>Подбор лечения по симптомам</h1>
+        <a href="/pharmacy" class="btn btn-secondary">В аптеку</a>
+    </div>
+
+    <form class="card" action="/pharmacy/ai-search" method="post" style="margin-bottom: 1.5rem;">
+        <div class="field">
+            <label>Опишите жалобы или симптомы *</label>
+            <textarea name="symptoms" rows="3" required placeholder="Например: высокая температура, кашель, головная боль...">{{ symptoms }}</textarea>
+            <div class="hint">Система проанализирует введенный текст и предложит вероятный диагноз и план лечения.</div>
+        </div>
+        <button type="submit" class="btn btn-primary">Найти лечение</button>
+    </form>
+
+    {% if result %}
+    <div class="card" style="border-left: 4px solid #005f73;">
+        <h2>Предполагаемый диагноз:</h2>
+        <p style="font-size: 1.1rem; font-weight: bold; color: #005f73;">{{ result.diagnosis }}</p>
+        
+        <h3 style="margin-top: 1.5rem;">Рекомендуемые препараты:</h3>
+        {% if not result.medications %}
+            <p class="muted">Конкретных препаратов не найдено. Направьте на осмотр.</p>
+        {% else %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Препарат</th>
+                        <th>Дозировка</th>
+                        <th>Курс</th>
+                        <th>В наличии</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in result.medications %}
+                    <tr>
+                        <td><strong>{{ m.name }}</strong></td>
+                        <td>{{ m.dosage }}</td>
+                        <td>{{ m.days }} дн.</td>
+                        <td>
+                            {% if m.in_stock > 0 %}
+                                <span class="badge badge-success">{{ m.in_stock }} шт. на складе</span>
+                            {% else %}
+                                <span class="badge badge-danger">Нет на складе</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div class="alert alert-warning" style="margin-top: 1rem;">
+                <strong>Внимание!</strong> Это предварительный план. Врач обязан проверить аллергии пациента и совместимость препаратов перед назначением.
+            </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+</body>
+</html>

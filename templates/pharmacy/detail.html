@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ med.name }} — Аптека</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .med-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; }
+        .med-title h1 { margin: 0 0 0.5rem 0; color: #005f73; }
+        .med-title p { margin: 0; color: #666; font-size: 1.1rem; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+        .info-block h3 { color: #003f4a; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; margin-top: 0; }
+        .info-block p { line-height: 1.6; color: #333; }
+        
+        .warning-box {
+            background-color: #fdecea;
+            border: 1px solid #f5b7b1;
+            border-left: 6px solid #b00020;
+            padding: 1.5rem;
+            border-radius: 4px;
+            margin-bottom: 1.5rem;
+        }
+        .warning-box h3 { color: #b00020; margin-top: 0; display: flex; align-items: center; gap: 8px; }
+        .warning-box p { color: #333; margin-bottom: 0; font-weight: 500; }
+        
+        .stock-badge { font-size: 1.2rem; padding: 0.4rem 1rem; }
+        
+        .sync-panel {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #eef7fa; border: 1px solid #b2dfdb; padding: 1rem;
+            border-radius: 4px; margin-bottom: 1.5rem;
+        }
+        .sync-status { font-size: 0.9rem; color: #004d40; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="topbar">
+        <a href="/pharmacy" class="btn btn-secondary">← Назад в аптеку</a>
+        <div class="user-info">
+            <span class="badge badge-muted">ID препарата: {{ med.id }}</span>
+        </div>
+    </div>
+
+    {% if message %}
+        <div class="alert alert-success">{{ message }}</div>
+    {% endif %}
+    {% if error %}
+        <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    <div class="med-header">
+        <div class="med-title">
+            <h1>{{ med.name }}</h1>
+            <p>
+                {{ med.form or 'Форма не указана' }} · {{ med.dosage or 'Дозировка не указана' }}
+                {% if med.category %} · <span class="badge badge-primary">{{ med.category.name }}</span>{% endif %}
+            </p>
+        </div>
+        <div>
+            {% if med.current_stock > 10 %}
+                <span class="badge badge-success stock-badge">На складе: {{ med.current_stock }} шт.</span>
+            {% elif med.current_stock > 0 %}
+                <span class="badge badge-warning stock-badge">Осталось: {{ med.current_stock }} шт.</span>
+            {% else %}
+                <span class="badge badge-danger stock-badge">Нет в наличии</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="sync-panel">
+        <div class="sync-status">
+            {% if med.location %}
+                📍 Место хранения: <strong>{{ med.location.name }}</strong> <span class="muted">{{ med.location.description or '' }}</span><br>
+            {% endif %}
+            {% if med.last_synced_at %}
+                ✅ Данные актуальны на <strong>{{ med.last_synced_at.strftime('%d.%m.%Y %H:%M') }}</strong>
+            {% else %}
+                ⚠️ Информация из интернета ещё не загружалась.
+            {% endif %}
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <a href="/pharmacy/{{ med.id }}/edit" class="btn btn-secondary">✏️ Редактировать</a>
+            <form action="/pharmacy/{{ med.id }}/sync" method="post" style="display: inline;">
+                <button type="submit" class="btn btn-primary">🔄 Обновить из интернета</button>
+            </form>
+            <button type="button" class="btn btn-danger" onclick="openDeleteModal()">🗑️ Удалить</button>
+        </div>
+    </div>
+
+    {% if med.interactions %}
+    <div class="warning-box">
+        <h3>⚠️ Внимание: Лекарственные взаимодействия</h3>
+        <p>{{ med.interactions }}</p>
+    </div>
+    {% endif %}
+
+    <div class="info-grid">
+        <div class="card info-block">
+            <h3>Показания к применению</h3>
+            <p>{{ med.indications or 'Информация отсутствует. Нажмите «Обновить из интернета».' }}</p>
+            
+            <h3 style="margin-top: 1.5rem;">Противопоказания</h3>
+            <p>{{ med.contraindications or 'Информация отсутствует.' }}</p>
+
+            <h3 style="margin-top: 1.5rem;">Побочные эффекты</h3>
+            <p>{{ med.side_effects or 'Информация отсутствует.' }}</p>
+        </div>
+
+        <div class="card info-block">
+            <h3>Описание</h3>
+            <p>{{ med.description or 'Описание не заполнено.' }}</p>
+            
+            <h3 style="margin-top: 1.5rem;">История движения на складе</h3>
+            {% if transactions %}
+                <ul style="padding-left: 1.2rem; margin: 0; font-size: 0.9rem;">
+                    {% for t in transactions %}
+                    <li style="margin-bottom: 0.5rem;">
+                        <strong>{{ t.created_at.strftime('%d.%m.%Y %H:%M') }}</strong>: 
+                        <span class="{% if t.amount > 0 %}text-success{% else %}text-danger{% endif %}">
+                            {% if t.amount > 0 %}+{% endif %}{{ t.amount }} шт.
+                        </span>
+                        <span class="muted">({{ t.reason }} — {{ t.user.username }})</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="muted">Движений по складу не было.</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="alert alert-warning" style="margin-top: 2rem; font-size: 0.9rem;">
+        <strong>Медицинское предупреждение:</strong> Данные о препарате загружены автоматически из справочника. Перед назначением обязательно сверьте дозировку и совместимость с историей болезни военнослужащего.
+    </div>
+</div>
+
+<!-- Модальное окно удаления препарата -->
+<div id="delete-med-modal" class="modal-backdrop" style="display:none;">
+    <div class="modal">
+        <h3>Удаление препарата</h3>
+        <p>Вы уверены, что хотите удалить <strong>{{ med.name }}</strong> из реестра?</p>
+        <p style="color: #b00020; font-size: 0.9rem;">Все записи о движении на складе для этого препарата будут безвозвратно удалены.</p>
+        
+        <form action="/pharmacy/{{ med.id }}/delete" method="post">
+            <div class="field">
+                <label>Для подтверждения введите название препарата:</label>
+                <input type="text" name="confirm_name" required autocomplete="off" placeholder="{{ med.name }}">
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Отмена</button>
+                <button type="submit" class="btn btn-danger">Удалить навсегда</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openDeleteModal() {
+        document.getElementById('delete-med-modal').style.display = 'flex';
+    }
+    function closeDeleteModal() {
+        document.getElementById('delete-med-modal').style.display = 'none';
+    }
+</script>
+</body>
+</html>

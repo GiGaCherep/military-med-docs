@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>{% if record %}Редактирование{% else %}Новая{% endif %} запись — Амбулаторный журнал</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container-narrow">
+    <div class="topbar">
+        <h1>{% if record %}Редактировать запись{% else %}Новая запись{% endif %}</h1>
+        <a href="/medical/journals/outpatient" class="btn btn-secondary">Назад</a>
+    </div>
+
+    {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+    <form class="card" action="{% if record %}/medical/journals/outpatient/{{ record.id }}/edit{% else %}/medical/journals/outpatient/new{% endif %}" method="post">
+        <div class="field">
+            <label for="serviceman_id">Военнослужащий *</label>
+            <select id="serviceman_id" name="serviceman_id" required>
+                <option value="">— выберите —</option>
+                {% for sm in servicemen %}
+                    <option value="{{ sm.id }}" {% if record and record.serviceman_id == sm.id %}selected{% endif %}>
+                        {{ sm.full_name }} ({{ sm.rank }}, {{ sm.service_number }})
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="field-row">
+            <div class="field">
+                <label for="visit_date">Дата обращения *</label>
+                <input type="date" id="visit_date" name="visit_date" value="{{ today }}" required>
+            </div>
+            <div class="field">
+                <label for="icd_code">Код МКБ-10</label>
+                <input type="text" id="icd_code" name="icd_code" value="{{ record.icd_code or '' if record else '' }}" placeholder="Например, J06.9">
+            </div>
+        </div>
+
+        <div class="field">
+            <label for="diagnosis">Диагноз *</label>
+            <input type="text" id="diagnosis" name="diagnosis" value="{{ record.diagnosis if record else '' }}" required placeholder="ОРВИ, ангина...">
+        </div>
+
+        <div class="field">
+            <label for="complaints">Жалобы</label>
+            <textarea id="complaints" name="complaints" rows="2" placeholder="Температура, кашель...">{{ record.complaints or '' if record else '' }}</textarea>
+        </div>
+
+        <div class="field">
+            <label for="treatment">Назначенное лечение</label>
+            <textarea id="treatment" name="treatment" rows="2" placeholder="Постельный режим, жаропонижающее...">{{ record.treatment or '' if record else '' }}</textarea>
+        </div>
+
+        <div class="field">
+            <label for="outcome">Исход</label>
+            <select id="outcome" name="outcome">
+                <option value="">— не указан —</option>
+                <option value="Возврат в строй" {% if record and record.outcome == "Возврат в строй" %}selected{% endif %}>Возврат в строй</option>
+                <option value="Освобождение" {% if record and record.outcome == "Освобождение" %}selected{% endif %}>Освобождение от службы</option>
+                <option value="Направление в госпиталь" {% if record and record.outcome == "Направление в госпиталь" %}selected{% endif %}>Направление в госпиталь</option>
+            </select>
+        </div>
+
+        <div class="edit-actions">
+            <button type="submit" class="btn btn-primary">Сохранить</button>
+            <a href="/medical/journals/outpatient" class="btn btn-secondary">Отмена</a>
+        </div>
+    </form>
+</div>
+</body>
+</html>

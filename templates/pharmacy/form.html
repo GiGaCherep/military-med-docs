@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Добавить препарат — Аптека</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container-narrow">
+    <div class="topbar">
+        <h1>Добавить препарат в аптеку</h1>
+        <a href="/pharmacy" class="btn btn-secondary">Назад</a>
+    </div>
+
+    {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+    <form class="card" action="/pharmacy/new" method="post">
+        <div class="field-row">
+            <div class="field">
+                <label for="name">Название *</label>
+                <input type="text" id="name" name="name" value="{{ prefill_name }}" required placeholder="Например, Парацетамол">
+            </div>
+            <div class="field">
+                <label for="dosage">Дозировка</label>
+                <input type="text" id="dosage" name="dosage" placeholder="500 мг">
+            </div>
+        </div>
+
+        <div class="field-row">
+            <div class="field">
+                <label for="form">Форма выпуска</label>
+                <input type="text" id="form" name="form" placeholder="Таблетки, ампулы...">
+            </div>
+            <div class="field">
+                <label for="current_stock">Начальный остаток (шт.)</label>
+                <input type="number" id="current_stock" name="current_stock" value="0" min="0">
+            </div>
+        </div>
+
+        <div class="field-row">
+            <div class="field">
+                <label for="category_id">Группа (Тег)</label>
+                <select id="category_id" name="category_id">
+                    <option value="">— без группы —</option>
+                    {% for c in categories %}
+                        <option value="{{ c.id }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field">
+                <label for="location_id">Место хранения</label>
+                <select id="location_id" name="location_id">
+                    <option value="">— не указано —</option>
+                    {% for l in locations %}
+                        <option value="{{ l.id }}">{{ l.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="field">
+            <label for="description">Краткое описание / Заметки</label>
+            <textarea id="description" name="description" rows="2"></textarea>
+        </div>
+
+        <div class="edit-actions">
+            <button type="submit" class="btn btn-primary">Сохранить</button>
+            <a href="/pharmacy" class="btn btn-secondary">Отмена</a>
+        </div>
+    </form>
+</div>
+</body>
+</html>

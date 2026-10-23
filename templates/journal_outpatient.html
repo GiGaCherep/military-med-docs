@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Журнал амбулаторных больных — Military Med Docs</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+    <div class="topbar">
+        <h1>Журнал амбулаторных больных</h1>
+        <div class="user-info">
+            <a href="/medical/journals/outpatient/new" class="btn btn-primary">+ Новая запись</a>
+            <a href="/medical/journals" class="btn btn-secondary">К журналам</a>
+        </div>
+    </div>
+
+    {% if message %}<div class="alert alert-success">{{ message }}</div>{% endif %}
+    {% if request.query_params.get('error') %}<div class="alert alert-error">{{ request.query_params.get('error') }}</div>{% endif %}
+
+    {% if not records %}
+        <div class="card"><p class="muted">Записей пока нет.</p></div>
+    {% else %}
+    <table>
+        <thead>
+            <tr>
+                <th>Дата</th>
+                <th>Военнослужащий</th>
+                <th>Диагноз (МКБ)</th>
+                <th>Лечение</th>
+                <th>Исход</th>
+                <th>Врач</th>
+                <th style="width: 100px;">Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in records %}
+            <tr>
+                <td>{{ r.visit_date.strftime('%d.%m.%Y') }}</td>
+                <td>
+                    <a href="/servicemen/{{ r.serviceman.id }}" class="username-link"><strong>{{ r.serviceman.full_name }}</strong></a><br>
+                    <span class="muted">{{ r.serviceman.rank }}, {{ r.serviceman.service_number }}</span>
+                </td>
+                <td>
+                    {{ r.diagnosis }} 
+                    {% if r.icd_code %}<br><code>{{ r.icd_code }}</code>{% endif %}
+                </td>
+                <td>{{ r.treatment or '—' }}</td>
+                <td>{{ r.outcome or '—' }}</td>
+                <td>{{ r.doctor.username }}</td>
+                <td>
+                    <a href="/medical/journals/outpatient/{{ r.id }}/edit" class="btn btn-secondary btn-small">Изменить</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+</body>
+</html>

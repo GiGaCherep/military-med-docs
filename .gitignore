@@ -1,0 +1,42 @@
+# --- Безопасность и секреты ---
+.env
+*.env
+.env.*
+
+# --- База данных и логи ---
+*.db
+*.sqlite3
+*.log
+
+# --- Загруженные файлы (uploads) ---
+uploads/
+!uploads/.gitkeep
+
+# --- Виртуальные окружения ---
+venv/
+.venv/
+env/
+src/venv/
+
+# --- Python кэш ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# --- Инструменты ---
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# --- IDE и OS ---
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# --- Специфичное для проекта ---
+admin_creation.log

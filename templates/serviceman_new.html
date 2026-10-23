@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Новый военнослужащий — Military Med Docs</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container-narrow">
+    <div class="topbar">
+        <h1>Добавить военнослужащего</h1>
+        <a href="/servicemen" class="btn btn-secondary">Назад к списку</a>
+    </div>
+    
+    {% if error %}
+        <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    <form class="card" action="/servicemen/new" method="post">
+        <div class="field">
+            <label for="full_name">ФИО *</label>
+            <input type="text" id="full_name" name="full_name" required placeholder="Иванов Иван Иванович">
+        </div>
+        
+        <div class="field-row">
+            <div class="field">
+                <label for="rank">Воинское звание *</label>
+                <input type="text" id="rank" name="rank" required placeholder="Рядовой">
+            </div>
+            <div class="field">
+                <label for="service_number">Номер жетона *</label>
+                <input type="text" id="service_number" name="service_number" required placeholder="АБ-123456">
+            </div>
+        </div>
+        
+        <div class="field">
+            <label for="callsign">Позывной</label>
+            <input type="text" id="callsign" name="callsign" placeholder="Например, Сокол">
+        </div>
+
+        <div class="field-row">
+            <div class="field">
+                <label for="unit">Подразделение *</label>
+                <input type="text" id="unit" name="unit" required placeholder="1-й взвод">
+            </div>
+            <div class="field">
+                <label for="military_unit">Воинская часть *</label>
+                <input type="text" id="military_unit" name="military_unit" required placeholder="в/ч 12345">
+            </div>
+        </div>
+
+        <div class="field-row">
+            <div class="field">
+                <label for="blood_type">Группа крови</label>
+                <select id="blood_type" name="blood_type">
+                    <option value="">— неизвестно —</option>
+                    <option value="I (0) Rh+">I (0) Rh+</option>
+                    <option value="I (0) Rh-">I (0) Rh-</option>
+                    <option value="II (A) Rh+">II (A) Rh+</option>
+                    <option value="II (A) Rh-">II (A) Rh-</option>
+                    <option value="III (B) Rh+">III (B) Rh+</option>
+                    <option value="III (B) Rh-">III (B) Rh-</option>
+                    <option value="IV (AB) Rh+">IV (AB) Rh+</option>
+                    <option value="IV (AB) Rh-">IV (AB) Rh-</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="allergies">Аллергии / особенности</label>
+                <input type="text" id="allergies" name="allergies" placeholder="Пенициллин, лидокаин">
+            </div>
+        </div>
+        
+        <div class="edit-actions">
+            <button type="submit" class="btn btn-primary">Сохранить</button>
+            <a href="/servicemen" class="btn btn-secondary">Отмена</a>
+        </div>
+    </form>
+</div>
+</body>
+</html>

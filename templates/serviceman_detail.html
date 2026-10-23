@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ sm.full_name }} — Military Med Docs</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+    <div class="topbar">
+        <div>
+            <h1>{{ sm.full_name }} {% if sm.callsign %}<span class="callsign-badge">{{ sm.callsign }}</span>{% endif %}</h1>
+            <p class="muted">{{ sm.rank }} · {{ sm.unit }} ({{ sm.military_unit }})</p>
+        </div>
+        <div class="user-info">
+            <a href="/medical/new?serviceman_id={{ sm.id }}" class="btn btn-primary">+ Медзапись</a>
+            <a href="/servicemen" class="btn btn-secondary">К списку</a>
+        </div>
+    </div>
+
+    {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+    {% if message %}<div class="alert alert-success">{{ message }}</div>{% endif %}
+
+    <!-- Основная информация -->
+    <div class="card" style="margin-bottom: 1.5rem;">
+        <h2>Анкетные данные</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div>
+                <p><strong>Номер жетона:</strong> {{ sm.service_number }}</p>
+                <p><strong>Звание:</strong> {{ sm.rank }}</p>
+                <p><strong>Статус:</strong> {% if sm.is_active %}Активен{% else %}Архив{% endif %}</p>
+            </div>
+            <div>
+                <p><strong>Группа крови:</strong> <span class="badge badge-danger">{{ sm.blood_type or 'Неизвестна' }}</span></p>
+                <p><strong>Аллергии:</strong> {{ sm.allergies or '—' }}</p>
+                <p><strong>В системе с:</strong> {{ sm.created_at.strftime('%d.%m.%Y') }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Медицинские записи -->
+    <div class="card" style="margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2>История болезней ({{ medical_records|length }})</h2>
+            <a href="/medical/new?serviceman_id={{ sm.id }}" class="btn btn-secondary btn-small">Добавить</a>
+        </div>
+        
+        {% if not medical_records %}
+            <p class="muted">Медицинских записей нет.</p>
+        {% else %}
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Дата</th>
+                            <th>Диагноз (МКБ)</th>
+                            <th>Сортировка</th>
+                            <th>Помощь</th>
+                            <th>Врач</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in medical_records %}
+                        <tr>
+                            <td>{{ r.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                            <td>
+                                <strong>{{ r.diagnosis }}</strong>
+                                {% if r.icd_code %}<br><code>{{ r.icd_code }}</code>{% endif %}
+                            </td>
+                            <td>
+                                {% if r.triage_color and triage_labels.get(r.triage_color) %}
+                                    {% set label, css = triage_labels[r.triage_color] %}
+                                    <span class="badge {{ css }}">{{ label }}</span>
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td>{{ r.treatment or '—' }}</td>
+                            <td>{{ r.doctor.username }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Прикрепленные документы -->
+    <div class="card">
+        <h2>Прикреплённые документы ({{ documents|length }})</h2>
+        
+        {% if not documents %}
+            <p class="muted">К военнослужащему не прикреплено ни одного документа.</p>
+        {% else %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Дата</th>
+                        <th>Название</th>
+                        <th>Тип</th>
+                        <th>Гриф</th>
+                        <th>Статус</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in documents %}
+                    <tr>
+                        <td>{{ d.created_at.strftime('%d.%m.%Y') }}</td>
+                        <td><a href="/documents/{{ d.id }}" class="username-link">{{ d.title }}</a></td>
+                        <td>{{ d.doc_type }}</td>
+                        <td>{{ d.classification }}</td>
+                        <td>
+                            <span class="badge badge-muted">{{ status_labels.get(d.status, d.status) }}</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </div>
+</div>
+</body>
+</html>

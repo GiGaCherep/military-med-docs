@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Редактирование пользователя — {{ user.username }}</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container-narrow">
+    <h1>Редактирование пользователя</h1>
+    <p class="muted">ID: {{ user.id }} | текущий логин: <strong>{{ user.username }}</strong> | роль: {{ user.role.name }}</p>
+
+    {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+    <div class="card">
+        <form action="/admin/users/{{ user.id }}/edit" method="post">
+            <div class="field">
+                <label for="username">Логин</label>
+                <input type="text" id="username" name="username"
+                       value="{{ user.username }}"
+                       required minlength="3" maxlength="32">
+                <div class="hint">3–32 символа, латиница/цифры/точка/подчёркивание/дефис</div>
+            </div>
+
+            <div class="field">
+                <label for="role_id">Роль</label>
+                <select id="role_id" name="role_id" required>
+                    {% for role in roles %}
+                        <option value="{{ role.id }}"
+                            {% if role.id == user.role_id %}selected{% endif %}>
+                            {{ role.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="field">
+                <label class="checkbox-row">
+                    <input type="checkbox" name="is_active" value="1"
+                           {% if user.is_active %}checked{% endif %}>
+                    Активен
+                </label>
+            </div>
+
+            <div class="field">
+                <label for="new_password">Новый пароль</label>
+                <input type="password" id="new_password" name="new_password"
+                       minlength="12" maxlength="128"
+                       placeholder="Оставьте пустым, чтобы не менять">
+                <div class="hint">Минимум 12 символов</div>
+            </div>
+
+            <div class="edit-actions">
+                <button type="submit" class="btn btn-primary">Сохранить</button>
+                <a href="/admin/users" class="btn btn-secondary">Отмена</a>
+            </div>
+        </form>
+    </div>
+</div>
+</body>
+</html>

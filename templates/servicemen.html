@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Военнослужащие — Military Med Docs</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+    <div class="topbar">
+        <h1>База военнослужащих</h1>
+        <div class="user-info">
+            <a href="/servicemen/new" class="btn btn-primary">+ Добавить</a>
+            <a href="/dashboard" class="btn btn-secondary">На главную</a>
+        </div>
+    </div>
+
+    {% if request.query_params.get('message') %}
+        <div class="alert alert-success">{{ request.query_params.get('message') }}</div>
+    {% endif %}
+
+    <form action="/servicemen" method="get" class="search-form">
+        <input type="text" name="q" value="{{ q }}" placeholder="Поиск по ФИО, жетону, подразделению..." class="search-input">
+        <button type="submit" class="btn btn-primary">Найти</button>
+    </form>
+
+    {% if not servicemen %}
+        <div class="card"><p class="muted">Военнослужащие не найдены.</p></div>
+    {% else %}
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>ФИО</th>
+                <th>Звание</th>
+                <th>Номер жетона</th>
+                <th>Подразделение</th>
+                <th>Группа крови</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sm in servicemen %}
+            <tr>
+                <td>{{ sm.id }}</td>
+                <td>
+                    <a href="/servicemen/{{ sm.id }}" class="username-link">
+                        <strong>{{ sm.full_name }}</strong>
+                    </a>
+                </td>
+                <td>{{ sm.rank }}</td>
+                <td>{{ sm.service_number }}</td>
+                <td>{{ sm.unit }} ({{ sm.military_unit }})</td>
+                <td>{{ sm.blood_type or '—' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+</body>
+</html>

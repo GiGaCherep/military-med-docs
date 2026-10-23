@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Журналы учёта — Military Med Docs</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+    <div class="topbar">
+        <h1>Журналы учёта</h1>
+        <div class="user-info">
+            <a href="/medical/new" class="btn btn-primary">+ Новая медзапись</a>
+            <a href="/dashboard" class="btn btn-secondary">На главную</a>
+        </div>
+    </div>
+
+    {% if request.query_params.get('message') %}
+        <div class="alert alert-success">{{ request.query_params.get('message') }}</div>
+    {% endif %}
+
+    <div class="stats-grid" style="grid-template-columns: 1fr;">
+        <div class="card">
+            <h3>Журнал учёта приёма раненых и больных</h3>
+            <p class="muted">Фиксация поступления в медицинский пункт.</p>
+            <a href="/medical/journals/admission" class="btn btn-primary">Открыть журнал</a>
+        </div>
+        
+        <div class="card">
+            <h3>Журнал учёта инфекционных больных</h3>
+            <p class="muted">Автоматическая выборка пациентов с инфекционными заболеваниями.</p>
+            <a href="/medical/journals/infection" class="btn btn-primary">Открыть журнал</a>
+        </div>
+
+        <div class="card">
+            <h3>Журнал учёта помощи вне МП</h3>
+            <p class="muted">Случаи оказания помощи за пределами медицинского пункта.</p>
+            <a href="/medical/journals/outside" class="btn btn-primary">Открыть журнал</a>
+        </div>
+        <div class="card">
+            <h3>Журнал амбулаторных больных</h3>
+            <p class="muted">Учёт обращений в медицинский пункт с возможностью редактирования.</p>
+            <a href="/medical/journals/outpatient" class="btn btn-primary">Открыть журнал</a>
+        </div>
+    </div>
+</div>
+</body>
+</html>

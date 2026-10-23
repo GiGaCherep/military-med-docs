@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Новая медзапись — Military Med Docs</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container-narrow">
+    <div class="topbar">
+        <h1>Новая медицинская запись</h1>
+        <a href="/medical/journals" class="btn btn-secondary">К журналам</a>
+    </div>
+
+    {% if request.query_params.get('error') %}
+        <div class="alert alert-error">{{ request.query_params.get('error') }}</div>
+    {% endif %}
+
+    <form class="card" action="/medical/new" method="post">
+        <div class="field">
+            <label for="serviceman_id">Военнослужащий *</label>
+            <div class="flex-row">
+                <select id="serviceman_id" name="serviceman_id" required class="flex-1">
+                    <option value="">— выберите —</option>
+                    {% for sm in servicemen %}
+                        <option value="{{ sm.id }}" {% if selected_sm and selected_sm.id == sm.id %}selected{% endif %}>
+                            {{ sm.full_name }} ({{ sm.rank }}, {{ sm.service_number }})
+                        </option>
+                    {% endfor %}
+                </select>
+                <button type="button" class="btn btn-secondary" onclick="openModal()">+ Новый</button>
+            </div>
+        </div>
+
+        <div class="field-row">
+            <div class="field">
+                <label for="record_type">Тип записи *</label>
+                <select id="record_type" name="record_type" required>
+                    <option value="admission">Приём в МП</option>
+                    <option value="outside">Помощь вне МП</option>
+                    <option value="infection">Инфекционный больной</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="triage_color">Сортировочная полоса</label>
+                <select id="triage_color" name="triage_color">
+                    <option value="">— нет —</option>
+                    <option value="red">Красная (неотложная)</option>
+                    <option value="black">Чёрная (изоляция)</option>
+                    <option value="yellow">Жёлтая (сан. обработка)</option>
+                    <option value="blue">Синяя (радиация)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="field-row">
+            <div class="field">
+                <label for="diagnosis">Диагноз *</label>
+                <input type="text" id="diagnosis" name="diagnosis" required placeholder="Огнестрельное ранение...">
+            </div>
+            <div class="field">
+                <label for="icd_code">Код МКБ-10</label>
+                <input type="text" id="icd_code" name="icd_code" placeholder="S71.1">
+            </div>
+        </div>
+
+        <div class="field">
+            <label for="complaints">Жалобы</label>
+            <textarea id="complaints" name="complaints" rows="2" placeholder="Боль в области..."></textarea>
+        </div>
+
+        <div class="field">
+            <label for="treatment">Оказанная помощь</label>
+            <textarea id="treatment" name="treatment" rows="2" placeholder="Наложена повязка, введен анальгетик..."></textarea>
+        </div>
+
+        <div class="field">
+            <label for="outcome">Исход / Решение об эвакуации</label>
+            <input type="text" id="outcome" name="outcome" placeholder="Эвакуация в госпиталь, возврат в строй...">
+        </div>
+
+        <div class="edit-actions">
+            <button type="submit" class="btn btn-primary">Сохранить запись</button>
+        </div>
+    </form>
+</div>
+
+<!-- Модальное окно быстрого добавления -->
+<div id="quick-add-modal" class="modal-backdrop hidden">
+    <div class="modal">
+        <h3>Быстрое добавление военнослужащего</h3>
+        <div id="modal-error" class="alert alert-error hidden"></div>
+        
+        <div class="field">
+            <label for="qa_full_name">ФИО *</label>
+            <input type="text" id="qa_full_name" placeholder="Иванов Иван Иванович">
+        </div>
+        <div class="field-row">
+            <div class="field">
+                <label for="qa_rank">Звание *</label>
+                <input type="text" id="qa_rank" placeholder="Рядовой">
+            </div>
+            <div class="field">
+                <label for="qa_service_number">Номер жетона *</label>
+                <input type="text" id="qa_service_number" placeholder="АБ-123456">
+            </div>
+        </div>
+        
+        <div class="modal-actions">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+            <button type="button" class="btn btn-primary" onclick="saveQuickAdd()">Добавить и выбрать</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openModal() {
+        document.getElementById('quick-add-modal').classList.remove('hidden');
+        document.getElementById('modal-error').classList.add('hidden');
+        document.getElementById('qa_full_name').focus();
+    }
+
+    function closeModal() {
+        document.getElementById('quick-add-modal').classList.add('hidden');
+    }
+
+    async function saveQuickAdd() {
+        const fullName = document.getElementById('qa_full_name').value.trim();
+        const rank = document.getElementById('qa_rank').value.trim();
+        const serviceNumber = document.getElementById('qa_service_number').value.trim();
+        const errorDiv = document.getElementById('modal-error');
+
+        if (!fullName || !rank || !serviceNumber) {
+            errorDiv.textContent = "Заполните все обязательные поля (*)";
+            errorDiv.classList.remove('hidden');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/servicemen/quick-add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    full_name: fullName,
+                    rank: rank,
+                    service_number: serviceNumber
+                })
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.detail || "Ошибка при создании");
+            }
+
+            const newSm = await response.json();
+            
+            const select = document.getElementById('serviceman_id');
+            const option = document.createElement('option');
+            option.value = newSm.id;
+            option.text = `${newSm.full_name} (${newSm.rank}, ${newSm.service_number})`;
+            select.appendChild(option);
+            select.value = newSm.id;
+            
+            closeModal();
+        } catch (error) {
+            errorDiv.textContent = error.message;
+            errorDiv.classList.remove('hidden');
+        }
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Настройки аптеки — Military Med Docs</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+    <div class="topbar">
+        <h1>Настройки склада</h1>
+        <a href="/pharmacy" class="btn btn-secondary">Назад в аптеку</a>
+    </div>
+
+    {% if request.query_params.get('message') %}
+        <div class="alert alert-success">{{ request.query_params.get('message') }}</div>
+    {% endif %}
+
+    <div class="info-grid">
+        <!-- Группы -->
+        <div class="card">
+            <h2>Группы препаратов (Теги)</h2>
+            <form action="/pharmacy/settings/category" method="post" style="display: flex; gap: 10px; margin-bottom: 1rem;">
+                <input type="text" name="name" placeholder="Например: Давление" required style="flex: 1; padding: 0.5rem;">
+                <button type="submit" class="btn btn-primary">Добавить</button>
+            </form>
+            <ul style="padding-left: 1.2rem;">
+                {% for c in categories %}
+                    <li>{{ c.name }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- Места хранения -->
+        <div class="card">
+            <h2>Места хранения</h2>
+            <form action="/pharmacy/settings/location" method="post" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 1rem;">
+                <input type="text" name="name" placeholder="Например: Шкаф А-1" required style="padding: 0.5rem;">
+                <input type="text" name="description" placeholder="Примечание (температурный режим и т.д.)" style="padding: 0.5rem;">
+                <button type="submit" class="btn btn-primary">Добавить</button>
+            </form>
+            <ul style="padding-left: 1.2rem;">
+                {% for l in locations %}
+                    <li><strong>{{ l.name }}</strong> <span class="muted">{{ l.description or '' }}</span></li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+</body>
+</html>

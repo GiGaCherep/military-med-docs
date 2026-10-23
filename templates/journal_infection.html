@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Журнал инфекционных больных — Military Med Docs</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+    <div class="topbar">
+        <h1>Журнал учёта инфекционных больных</h1>
+        <div class="user-info">
+            <a href="/medical/new" class="btn btn-primary">+ Новая запись</a>
+            <a href="/medical/journals" class="btn btn-secondary">К журналам</a>
+        </div>
+    </div>
+
+    {% if not records %}
+        <div class="card"><p class="muted">Инфекционных больных нет.</p></div>
+    {% else %}
+    <table>
+        <thead>
+            <tr>
+                <th>Дата/Время</th>
+                <th>Военнослужащий</th>
+                <th>Диагноз (МКБ)</th>
+                <th>Изоляция</th>
+                <th>Врач</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in records %}
+            <tr>
+                <td>{{ r.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                <td>
+                    <a href="/servicemen/{{ r.serviceman.id }}" class="username-link"><strong>{{ r.serviceman.full_name }}</strong></a><br>
+                    <span class="muted">{{ r.serviceman.rank }}, {{ r.serviceman.service_number }}</span>
+                </td>
+                <td>
+                    {{ r.diagnosis }} 
+                    {% if r.icd_code %}<br><code>{{ r.icd_code }}</code>{% endif %}
+                </td>
+                <td><span class="badge badge-dark">Изолирован</span></td>
+                <td>{{ r.doctor.username }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+</body>
+</html>

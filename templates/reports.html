@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Отчеты — Military Med Docs</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .report-section { margin-bottom: 2rem; }
+        .report-section h2 { color: #005f73; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
+        .filter-form { display: flex; gap: 1rem; align-items: flex-end; margin-bottom: 2rem; background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .filter-form .field { margin-bottom: 0; flex: 1; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="topbar">
+        <h1>Сводные отчёты</h1>
+        <a href="/dashboard" class="btn btn-secondary">На главную</a>
+    </div>
+
+    <form action="/reports" method="get" class="filter-form">
+        <div class="field">
+            <label for="start_date">Дата с:</label>
+            <input type="date" id="start_date" name="start_date" value="{{ start_date }}">
+        </div>
+        <div class="field">
+            <label for="end_date">Дата по:</label>
+            <input type="date" id="end_date" name="end_date" value="{{ end_date }}">
+        </div>
+        <button type="submit" class="btn btn-primary">Применить фильтр</button>
+        {% if start_date or end_date %}
+            <a href="/reports" class="btn btn-secondary">Сбросить</a>
+        {% endif %}
+    </form>
+
+    <!-- Отчет по амбулаторным больным -->
+    <div class="report-section card">
+        <h2>Амбулаторный приём ({{ outpatients|length }})</h2>
+        {% if not outpatients %}
+            <p class="muted">Нет данных за выбранный период.</p>
+        {% else %}
+            <table>
+                <thead>
+                    <tr><th>Дата</th><th>Военнослужащий</th><th>Диагноз</th><th>Исход</th><th>Врач</th></tr>
+                </thead>
+                <tbody>
+                    {% for r in outpatients %}
+                    <tr>
+                        <td>{{ r.visit_date.strftime('%d.%m.%Y') }}</td>
+                        <td>{{ r.serviceman.full_name }}</td>
+                        <td>{{ r.diagnosis }}</td>
+                        <td>{{ r.outcome or '—' }}</td>
+                        <td>{{ r.doctor.username }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </div>
+
+    <!-- Отчет по стационару/приему в МП -->
+    <div class="report-section card">
+        <h2>Медицинские записи ({{ medicals|length }})</h2>
+        {% if not medicals %}
+            <p class="muted">Нет данных за выбранный период.</p>
+        {% else %}
+            <table>
+                <thead>
+                    <tr><th>Дата</th><th>Военнослужащий</th><th>Тип</th><th>Диагноз</th><th>Помощь</th><th>Врач</th></tr>
+                </thead>
+                <tbody>
+                    {% for r in medicals %}
+                    <tr>
+                        <td>{{ r.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                        <td>{{ r.serviceman.full_name }}</td>
+                        <td>{{ r.record_type }}</td>
+                        <td>{{ r.diagnosis }}</td>
+                        <td>{{ r.treatment or '—' }}</td>
+                        <td>{{ r.doctor.username }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </div>
+
+    <!-- Отчет по списанию медикаментов -->
+    <div class="report-section card">
+        <h2>Выдача медикаментов ({{ meds|length }})</h2>
+        {% if not meds %}
+            <p class="muted">Нет данных за выбранный период.</p>
+        {% else %}
+            <table>
+                <thead>
+                    <tr><th>Дата</th><th>Препарат</th><th>Кому выдано</th><th>Количество</th><th>Причина</th><th>Кто выдал</th></tr>
+                </thead>
+                <tbody>
+                    {% for t in meds %}
+                    <tr>
+                        <td>{{ t.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                        <td>{{ t.medication.name }}</td>
+                        <td>
+                            {% if t.serviceman %}
+                                <a href="/servicemen/{{ t.serviceman.id }}" class="username-link">{{ t.serviceman.full_name }}</a>
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td><span class="text-danger">{{ t.amount }} шт.</span></td>
+                        <td>{{ t.reason }}</td>
+                        <td>{{ t.user.username }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </div>
+</div>
+</body>
+</html>

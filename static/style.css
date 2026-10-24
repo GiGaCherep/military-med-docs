@@ -447,3 +447,17 @@ input[type="date"] {
 /* === История склада (приход/расход) === */
 .text-success { color: #1b5e20; font-weight: bold; }
 .text-danger { color: #b00020; font-weight: bold; }
+/* === Группы в боковом меню === */
+.sidebar-group-title {
+    color: #8898aa;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-top: 1.2rem;
+    margin-bottom: 0.3rem;
+    padding-left: 0.8rem;
+    letter-spacing: 0.5px;
+}
+.sidebar-group-title:first-of-type {
+    margin-top: 0;
+}

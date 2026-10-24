@@ -46,7 +46,7 @@ class Serviceman(Base):
     id = Column(Integer, primary_key=True, index=True)
     full_name = Column(String(255), nullable=False, index=True)
     rank = Column(String(64), nullable=False)
-    service_number = Column(String(64), unique=True, nullable=False, index=True)
+    service_number = Column(String(64), unique=True, nullable=True, index=True)
     callsign = Column(String(64), nullable=True, index=True)
     unit = Column(String(128), nullable=False)
     military_unit = Column(String(128), nullable=False)

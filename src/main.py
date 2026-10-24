@@ -17,7 +17,9 @@ from fastapi import Depends, FastAPI, File, Form, Request, UploadFile, status, H
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import or_, func
+from fastapi.exception_handlers import http_exception_handler
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from sqlalchemy import or_, func, and_
 from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
@@ -45,6 +47,14 @@ app = FastAPI(title="Military Med Docs")
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
+
+# --- ПЕРЕХВАТ ОШИБКИ 401 (Истечение сессии) ---
+@app.exception_handler(StarletteHTTPException)
+async def custom_http_exception_handler(request: Request, exc: StarletteHTTPException):
+    if exc.status_code == 401 and not request.url.path.startswith("/api/"):
+        # Если сессия истекла, редиректим на логин с сообщением
+        return RedirectResponse(url="/?message=Сессия+истекла.+Пожалуйста,+войдите+снова.", status_code=303)
+    return await http_exception_handler(request, exc)
 
 # --- Константы ---
 ALLOWED_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png", ".docx"}
@@ -105,8 +115,8 @@ def utc_now():
 
 # --- Базовые страницы и авторизация ---
 @app.get("/", response_class=HTMLResponse)
-async def home(request: Request):
-    return render("index.html", request)
+async def home(request: Request, message: str = ""):
+    return render("index.html", request, success=message)
 
 @app.post("/login")
 async def login(request: Request, username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
@@ -139,6 +149,55 @@ async def dashboard(request: Request, db: Session = Depends(get_db), current_use
     unread_notifications = db.query(Notification).filter(Notification.user_id == current_user.id, Notification.is_read.is_(False)).count()
 
     return render("dashboard.html", request, current_user=current_user, stats={"total": total, "last_week": last_week, "on_review": on_review}, documents=recent, status_labels=STATUS_LABELS, unread_notifications=unread_notifications, message=request.query_params.get("message"), error=request.query_params.get("error"))
+
+
+# --- ОТЧЕТЫ ---
+@app.get("/reports", response_class=HTMLResponse)
+async def reports_page(
+    request: Request, 
+    start_date: str = "", 
+    end_date: str = "", 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user_web)
+):
+    # Парсинг дат
+    start = None
+    end = None
+    if start_date:
+        try: start = datetime.strptime(start_date, "%Y-%m-%d").date()
+        except ValueError: pass
+    if end_date:
+        try: end = datetime.strptime(end_date, "%Y-%m-%d").date()
+        except ValueError: pass
+
+    # Базовые запросы
+    q_outpatient = db.query(OutpatientRecord)
+    q_medical = db.query(MedicalRecord)
+    q_meds = db.query(StockTransaction).options(joinedload(StockTransaction.medication), joinedload(StockTransaction.serviceman)).filter(StockTransaction.amount < 0)
+
+    # Применяем фильтры
+    if start:
+        q_outpatient = q_outpatient.filter(OutpatientRecord.visit_date >= start)
+        q_medical = q_medical.filter(func.date(MedicalRecord.created_at) >= start)
+        q_meds = q_meds.filter(func.date(StockTransaction.created_at) >= start)
+    if end:
+        q_outpatient = q_outpatient.filter(OutpatientRecord.visit_date <= end)
+        q_medical = q_medical.filter(func.date(MedicalRecord.created_at) <= end)
+        q_meds = q_meds.filter(func.date(StockTransaction.created_at) <= end)
+
+    outpatients = q_outpatient.order_by(OutpatientRecord.visit_date.desc()).all()
+    medicals = q_medical.order_by(MedicalRecord.created_at.desc()).all()
+    meds = q_meds.order_by(StockTransaction.created_at.desc()).all()
+
+    return render(
+        "reports.html", request,
+        current_user=current_user,
+        start_date=start_date,
+        end_date=end_date,
+        outpatients=outpatients,
+        medicals=medicals,
+        meds=meds
+    )
 
 
 # --- Документы ---
@@ -305,15 +364,17 @@ async def serviceman_new_form(request: Request, current_user: User = Depends(get
 
 @app.post("/servicemen/new", response_class=HTMLResponse)
 async def serviceman_new_submit(
-    request: Request, full_name: str = Form(...), rank: str = Form(...), service_number: str = Form(...),
+    request: Request, full_name: str = Form(...), rank: str = Form(...), service_number: str = Form(""),
     callsign: str = Form(""), unit: str = Form(...), military_unit: str = Form(...), blood_type: str = Form(""), allergies: str = Form(""),
     db: Session = Depends(get_db), current_user: User = Depends(get_current_user_web)
 ):
-    if db.query(Serviceman).filter(Serviceman.service_number == service_number).first():
+    # Проверка на уникальность, только если номер указан
+    if service_number and db.query(Serviceman).filter(Serviceman.service_number == service_number).first():
         return render("serviceman_new.html", request, current_user=current_user, error="Номер жетона уже существует")
 
     sm = Serviceman(
-        full_name=full_name, rank=rank, service_number=service_number, 
+        full_name=full_name, rank=rank, 
+        service_number=service_number or None, 
         callsign=callsign or None, 
         unit=unit, military_unit=military_unit, 
         blood_type=blood_type or None, allergies=allergies or None
@@ -591,7 +652,6 @@ async def outpatient_edit_submit(
 
 
 # --- АПТЕКА ---
-
 @app.get("/pharmacy", response_class=HTMLResponse)
 async def pharmacy_index(
     request: Request, 
@@ -670,8 +730,6 @@ async def add_location(name: str = Form(...), description: str = Form(""), db: S
         db.commit()
     return RedirectResponse(url="/pharmacy/settings?message=Место+добавлено", status_code=303)
 
-# --- Редактирование и удаление ГРУПП ---
-
 @app.get("/pharmacy/settings/category/{cat_id}/edit", response_class=HTMLResponse)
 async def edit_category_form(cat_id: int, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_web)):
     cat = db.query(MedicationCategory).filter(MedicationCategory.id == cat_id).first()
@@ -685,7 +743,6 @@ async def edit_category_submit(cat_id: int, request: Request, name: str = Form(.
     if not cat:
         return RedirectResponse(url="/pharmacy/settings?error=Группа+не+найдена", status_code=303)
     
-    # Проверка на уникальность имени
     if db.query(MedicationCategory).filter(MedicationCategory.name == name, MedicationCategory.id != cat_id).first():
         return render("pharmacy/category_edit.html", request, current_user=current_user, cat=cat, error="Группа с таким названием уже существует")
 
@@ -699,16 +756,12 @@ async def delete_category(cat_id: int, db: Session = Depends(get_db), current_us
     if not cat:
         return RedirectResponse(url="/pharmacy/settings?error=Группа+не+найдена", status_code=303)
     
-    # Запрет на удаление, если к группе привязаны препараты
     if cat.medications:
         return RedirectResponse(url="/pharmacy/settings?error=Нельзя+удалить+группу,+к+ней+привязаны+препараты", status_code=303)
     
     db.delete(cat)
     db.commit()
     return RedirectResponse(url="/pharmacy/settings?message=Группа+удалена", status_code=303)
-
-
-# --- Редактирование и удаление МЕСТ ХРАНЕНИЯ ---
 
 @app.get("/pharmacy/settings/location/{loc_id}/edit", response_class=HTMLResponse)
 async def edit_location_form(loc_id: int, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_web)):
@@ -723,7 +776,6 @@ async def edit_location_submit(loc_id: int, request: Request, name: str = Form(.
     if not loc:
         return RedirectResponse(url="/pharmacy/settings?error=Место+не+найдено", status_code=303)
     
-    # Проверка на уникальность имени
     if db.query(StorageLocation).filter(StorageLocation.name == name, StorageLocation.id != loc_id).first():
         return render("pharmacy/location_edit.html", request, current_user=current_user, loc=loc, error="Место с таким названием уже существует")
 
@@ -738,7 +790,6 @@ async def delete_location(loc_id: int, db: Session = Depends(get_db), current_us
     if not loc:
         return RedirectResponse(url="/pharmacy/settings?error=Место+не+найдено", status_code=303)
     
-    # Запрет на удаление, если к месту привязаны препараты
     if loc.medications:
         return RedirectResponse(url="/pharmacy/settings?error=Нельзя+удалить+место,+к+нему+привязаны+препараты", status_code=303)
     
@@ -777,9 +828,6 @@ async def pharmacy_new_submit(
     audit(db, current_user, "medication.create", "medication", med.id, {"name": name})
     db.commit()
     return RedirectResponse(url="/pharmacy?message=Лекарство+добавлено", status_code=303)
-
-
-# 1. Сначала специфичные действия (edit, stock, sync)
 
 @app.get("/pharmacy/{med_id}/edit", response_class=HTMLResponse)
 async def pharmacy_edit_form(
@@ -906,9 +954,6 @@ async def pharmacy_medication_delete(
 
     return RedirectResponse(url="/pharmacy?message=Препарат+удален+из+реестра", status_code=303)
 
-
-# 2. И только потом сама карточка препарата
-
 @app.get("/pharmacy/{med_id}", response_class=HTMLResponse)
 async def pharmacy_medication_detail(
     med_id: int, 
@@ -1029,15 +1074,16 @@ async def admin_user_delete(user_id: int, confirm_username: str = Form(...), db:
 async def api_serviceman_quick_add(
     full_name: str = Body(...),
     rank: str = Body(...),
-    service_number: str = Body(...),
+    service_number: str = Body(""),  # <-- Сделали необязательным
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_web)
 ):
-    if db.query(Serviceman).filter(Serviceman.service_number == service_number).first():
+    if service_number and db.query(Serviceman).filter(Serviceman.service_number == service_number).first():
         raise HTTPException(status_code=400, detail="Военнослужащий с таким номером жетона уже существует")
 
     sm = Serviceman(
-        full_name=full_name, rank=rank, service_number=service_number,
+        full_name=full_name, rank=rank, 
+        service_number=service_number or None,
         unit="Не указано", military_unit="Не указано"
     )
     db.add(sm)
@@ -1045,4 +1091,4 @@ async def api_serviceman_quick_add(
     audit(db, current_user, "serviceman.create_quick", "serviceman", sm.id, {"name": full_name})
     db.commit()
 
-    return {"id": sm.id, "full_name": sm.full_name, "rank": sm.rank, "service_number": sm.service_number}
+    return {"id": sm.id, "full_name": sm.full_name, "rank": sm.rank, "service_number": sm.service_number or "—"}

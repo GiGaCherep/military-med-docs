@@ -11,36 +11,65 @@
         <h2 class="sidebar-title">Шторм 28 Docs</h2>
         <hr class="sidebar-sep">
         <nav class="sidebar-nav">
-    <a href="/dashboard" class="sidebar-link active">
-        <span class="icon">📋</span> Документы
-    </a>
-    <a href="/documents/new" class="sidebar-link">
-        <span class="icon">➕</span> Новый документ
-    </a>
-    <a href="/servicemen" class="sidebar-link">
-        <span class="icon">👥</span> Военнослужащие
-    </a>
-    <a href="/medical/new" class="sidebar-link">
-        <span class="icon">🩺</span> Медзапись
-    </a>
-    <a href="/medical/journals" class="sidebar-link">
-        <span class="icon">📖</span> Журналы учёта
-    </a>
-    <a href="/notifications" class="sidebar-link">
-        <span class="icon">🔔</span> Уведомления
-        {% if unread_notifications and unread_notifications > 0 %}
-            <span class="badge badge-warning">{{ unread_notifications }}</span>
-        {% endif %}
-    </a>
-    <a href="/pharmacy" class="sidebar-link"><span class="icon">💊</span> Аптека</a>
-    {% if current_user.role.name == 'admin' %}
-        <a href="/admin/users" class="sidebar-link">
-            <span class="icon">⚙️</span> Пользователи
-        </a>
-        <a href="/admin/audit" class="sidebar-link">
-            <span class="icon">📜</span> Аудит
-        </a>
-    {% endif %}
+            <!-- Блок 1: Документы -->
+            <div class="sidebar-group-title">Документооборот</div>
+            <a href="/dashboard" class="sidebar-link active">
+                <span class="icon">📋</span> Документы
+            </a>
+            <a href="/documents/new" class="sidebar-link">
+                <span class="icon">➕</span> Новый документ
+            </a>
+
+            <!-- Блок 2: Военнослужащие -->
+            <div class="sidebar-group-title">Личный состав</div>
+            <a href="/servicemen" class="sidebar-link">
+                <span class="icon">👥</span> База военнослужащих
+            </a>
+
+            <!-- Блок 3: Медицина -->
+            <div class="sidebar-group-title">Медицина</div>
+            <a href="/medical/new" class="sidebar-link">
+                <span class="icon">🩺</span> Медзапись
+            </a>
+            <a href="/medical/journals" class="sidebar-link">
+                <span class="icon">📖</span> Журналы учёта
+            </a>
+
+            <!-- Блок 4: Аптека -->
+            <div class="sidebar-group-title">Аптека</div>
+            <a href="/pharmacy" class="sidebar-link">
+                <span class="icon">💊</span> Реестр и склад
+            </a>
+            <a href="/pharmacy/settings" class="sidebar-link">
+                <span class="icon">⚙️</span> Настройки склада
+            </a>
+            <a href="/pharmacy/ai-search" class="sidebar-link">
+                <span class="icon">🔍</span> Подбор лечения
+            </a>
+
+            <!-- Блок 5: Отчеты -->
+            <div class="sidebar-group-title">Аналитика</div>
+            <a href="/reports" class="sidebar-link">
+                <span class="icon">📈</span> Отчёты
+            </a>
+
+            <!-- Блок 6: Уведомления -->
+            <div class="sidebar-group-title">Система</div>
+            <a href="/notifications" class="sidebar-link">
+                <span class="icon">🔔</span> Уведомления
+                {% if unread_notifications and unread_notifications > 0 %}
+                    <span class="badge badge-warning">{{ unread_notifications }}</span>
+                {% endif %}
+            </a>
+            
+            {% if current_user.role.name == 'admin' %}
+                <a href="/admin/users" class="sidebar-link">
+                    <span class="icon">👤</span> Пользователи
+                </a>
+                <a href="/admin/audit" class="sidebar-link">
+                    <span class="icon">📜</span> Аудит
+                </a>
+            {% endif %}
         </nav>
         <div class="sidebar-footer">
             <form action="/logout" method="post">

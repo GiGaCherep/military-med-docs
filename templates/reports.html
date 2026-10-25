@@ -6,7 +6,22 @@
     <link rel="stylesheet" href="/static/style.css">
     <style>
         .report-section { margin-bottom: 2rem; }
-        .report-section h2 { color: #005f73; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
+        .report-section h2 { color: #005f73; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; margin: 0; }
+        
+        /* Стили для шапки отчета с кнопками */
+        .report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .report-header h2 { border-bottom: none; padding-bottom: 0; }
+        .report-actions { display: flex; gap: 10px; }
+        
         .filter-form { display: flex; gap: 1rem; align-items: flex-end; margin-bottom: 2rem; background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); flex-wrap: wrap; }
         .filter-form .field { margin-bottom: 0; flex: 1; min-width: 150px; }
     </style>
@@ -20,7 +35,7 @@
 
     <form action="/reports" method="get" class="filter-form">
         <div class="field">
-            <label for="report_type">Тип отчета:</label>
+            <label for="report_type">Показать:</label>
             <select id="report_type" name="report_type">
                 <option value="all" {% if report_type == 'all' %}selected{% endif %}>Все отчеты</option>
                 <option value="outpatient" {% if report_type == 'outpatient' %}selected{% endif %}>Только амбулаторные</option>
@@ -38,11 +53,6 @@
         </div>
         <button type="submit" class="btn btn-primary">Применить фильтр</button>
         
-        <!-- Кнопка экспорта передает те же параметры через форму -->
-        <button type="submit" formaction="/reports/export" formmethod="get" class="btn btn-secondary" style="background: #b00020; color: white;">
-            📄 Экспорт в PDF
-        </button>
-
         {% if start_date or end_date or report_type != 'all' %}
             <a href="/reports" class="btn btn-secondary">Сбросить</a>
         {% endif %}
@@ -51,7 +61,16 @@
     <!-- 1. Отчет по амбулаторным больным -->
     {% if report_type in ['all', 'outpatient'] %}
     <div class="report-section card">
-        <h2>Амбулаторный приём ({{ outpatients|length }})</h2>
+        <div class="report-header">
+            <h2>Амбулаторный приём ({{ outpatients|length }})</h2>
+            <div class="report-actions">
+                {% if report_type == 'all' %}
+                    <a href="/reports?report_type=outpatient&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-secondary btn-small">Показать только этот</a>
+                {% endif %}
+                <a href="/reports/export?report_type=outpatient&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-secondary btn-small" style="background: #b00020; color: white;">📄 Скачать PDF</a>
+            </div>
+        </div>
+        
         {% if not outpatients %}
             <p class="muted">Нет данных за выбранный период.</p>
         {% else %}
@@ -79,7 +98,16 @@
     <!-- 2. Отчет по стационару/приему в МП -->
     {% if report_type in ['all', 'medical'] %}
     <div class="report-section card">
-        <h2>Медицинские записи ({{ medicals|length }})</h2>
+        <div class="report-header">
+            <h2>Медицинские записи ({{ medicals|length }})</h2>
+            <div class="report-actions">
+                {% if report_type == 'all' %}
+                    <a href="/reports?report_type=medical&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-secondary btn-small">Показать только этот</a>
+                {% endif %}
+                <a href="/reports/export?report_type=medical&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-secondary btn-small" style="background: #b00020; color: white;">📄 Скачать PDF</a>
+            </div>
+        </div>
+        
         {% if not medicals %}
             <p class="muted">Нет данных за выбранный период.</p>
         {% else %}
@@ -108,7 +136,16 @@
     <!-- 3. Отчет по списанию медикаментов -->
     {% if report_type in ['all', 'meds'] %}
     <div class="report-section card">
-        <h2>Выдача медикаментов ({{ meds|length }})</h2>
+        <div class="report-header">
+            <h2>Выдача медикаментов ({{ meds|length }})</h2>
+            <div class="report-actions">
+                {% if report_type == 'all' %}
+                    <a href="/reports?report_type=meds&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-secondary btn-small">Показать только этот</a>
+                {% endif %}
+                <a href="/reports/export?report_type=meds&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-secondary btn-small" style="background: #b00020; color: white;">📄 Скачать PDF</a>
+            </div>
+        </div>
+        
         {% if not meds %}
             <p class="muted">Нет данных за выбранный период.</p>
         {% else %}

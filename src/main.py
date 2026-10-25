@@ -384,6 +384,61 @@ async def serviceman_new_submit(
     audit(db, current_user, "serviceman.create", "serviceman", sm.id, {"name": full_name})
     db.commit()
     return RedirectResponse(url="/servicemen?message=Военнослужащий+добавлен", status_code=303)
+@app.get("/servicemen/{serviceman_id}/edit", response_class=HTMLResponse)
+async def serviceman_edit_form(
+    serviceman_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_web)
+):
+    sm = db.query(Serviceman).filter(Serviceman.id == serviceman_id).first()
+    if not sm:
+        return RedirectResponse(url="/servicemen?error=Военнослужащий+не+найден", status_code=303)
+    return render("serviceman_edit.html", request, current_user=current_user, sm=sm, error=None)
+
+@app.post("/servicemen/{serviceman_id}/edit", response_class=HTMLResponse)
+async def serviceman_edit_submit(
+    serviceman_id: int,
+    request: Request,
+    full_name: str = Form(...),
+    rank: str = Form(...),
+    service_number: str = Form(""),
+    callsign: str = Form(""),
+    unit: str = Form(...),
+    military_unit: str = Form(...),
+    blood_type: str = Form(""),
+    allergies: str = Form(""),
+    is_active: str | None = Form(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_web)
+):
+    sm = db.query(Serviceman).filter(Serviceman.id == serviceman_id).first()
+    if not sm:
+        return RedirectResponse(url="/servicemen?error=Военнослужащий+не+найден", status_code=303)
+
+    # Проверка уникальности номера жетона (если он указан)
+    if service_number:
+        existing = db.query(Serviceman).filter(
+            Serviceman.service_number == service_number,
+            Serviceman.id != serviceman_id
+        ).first()
+        if existing:
+            return render("serviceman_edit.html", request, current_user=current_user, sm=sm, error="Номер жетона уже занят другим военнослужащим")
+
+    sm.full_name = full_name
+    sm.rank = rank
+    sm.service_number = service_number or None
+    sm.callsign = callsign or None
+    sm.unit = unit
+    sm.military_unit = military_unit
+    sm.blood_type = blood_type or None
+    sm.allergies = allergies or None
+    sm.is_active = bool(is_active)
+
+    audit(db, current_user, "serviceman.edit", "serviceman", sm.id, {"name": full_name})
+    db.commit()
+
+    return RedirectResponse(url=f"/servicemen/{serviceman_id}?message=Данные+пациента+обновлены", status_code=303)
 
 @app.get("/servicemen/{serviceman_id}", response_class=HTMLResponse)
 async def serviceman_detail(
@@ -1074,7 +1129,8 @@ async def admin_user_delete(user_id: int, confirm_username: str = Form(...), db:
 async def api_serviceman_quick_add(
     full_name: str = Body(...),
     rank: str = Body(...),
-    service_number: str = Body(""),  # <-- Сделали необязательным
+    service_number: str = Body(""),
+    unit: str = Body(""),  # <--- ДОБАВЛЕНО
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_web)
 ):
@@ -1084,11 +1140,12 @@ async def api_serviceman_quick_add(
     sm = Serviceman(
         full_name=full_name, rank=rank, 
         service_number=service_number or None,
-        unit="Не указано", military_unit="Не указано"
+        unit=unit or "Не указано",           # <--- ИСПОЛЬЗУЕМ
+        military_unit="Не указано"
     )
     db.add(sm)
     db.flush()
     audit(db, current_user, "serviceman.create_quick", "serviceman", sm.id, {"name": full_name})
     db.commit()
 
-    return {"id": sm.id, "full_name": sm.full_name, "rank": sm.rank, "service_number": sm.service_number or "—"}
+    return {"id": sm.id, "full_name": sm.full_name, "rank": sm.rank, "service_number": sm.service_number or "", "unit": sm.unit}

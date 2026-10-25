@@ -17,6 +17,12 @@
             <a href="/medical/new?serviceman_id={{ sm.id }}" class="btn btn-secondary">+ Медзапись</a>
             <a href="/servicemen" class="btn btn-secondary">К списку</a>
         </div>
+        <div class="user-info">
+           <a href="/servicemen/{{ sm.id }}/edit" class="btn btn-secondary">✏️ Редактировать</a>
+          <button type="button" class="btn btn-primary" onclick="openDispenseModal()">💊 Выдать лекарство</button>
+           <a href="/medical/new?serviceman_id={{ sm.id }}" class="btn btn-secondary">+ Медзапись</a>
+           <a href="/servicemen" class="btn btn-secondary">К списку</a>
+        </div>
     </div>
 
     {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}

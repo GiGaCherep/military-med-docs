@@ -24,7 +24,7 @@
                     <option value="">— выберите —</option>
                     {% for sm in servicemen %}
                         <option value="{{ sm.id }}" {% if selected_sm and selected_sm.id == sm.id %}selected{% endif %}>
-                            {{ sm.full_name }} ({{ sm.rank }}, {{ sm.service_number }})
+                            {{ sm.full_name }} ({{ sm.rank }}, {{ sm.unit }}, {{ sm.service_number or 'без жетона' }})
                         </option>
                     {% endfor %}
                 </select>
@@ -95,15 +95,21 @@
             <label for="qa_full_name">ФИО *</label>
             <input type="text" id="qa_full_name" placeholder="Иванов Иван Иванович">
         </div>
+        
         <div class="field-row">
             <div class="field">
                 <label for="qa_rank">Звание *</label>
                 <input type="text" id="qa_rank" placeholder="Рядовой">
             </div>
             <div class="field">
-                <label for="qa_service_number">Номер жетона *</label>
-                <input type="text" id="qa_service_number" placeholder="АБ-123456">
+                <label for="qa_unit">Подразделение *</label>
+                <input type="text" id="qa_unit" placeholder="1-й взвод">
             </div>
+        </div>
+
+        <div class="field">
+            <label for="qa_service_number">Номер жетона</label>
+            <input type="text" id="qa_service_number" placeholder="АБ-123456 (необязательно)">
         </div>
         
         <div class="modal-actions">
@@ -127,11 +133,13 @@
     async function saveQuickAdd() {
         const fullName = document.getElementById('qa_full_name').value.trim();
         const rank = document.getElementById('qa_rank').value.trim();
+        const unit = document.getElementById('qa_unit').value.trim();
         const serviceNumber = document.getElementById('qa_service_number').value.trim();
         const errorDiv = document.getElementById('modal-error');
 
-        if (!fullName || !rank || !serviceNumber) {
-            errorDiv.textContent = "Заполните все обязательные поля (*)";
+        // ФИО, Звание и Подразделение обязательны
+        if (!fullName || !rank || !unit) {
+            errorDiv.textContent = "Заполните обязательные поля (*)";
             errorDiv.classList.remove('hidden');
             return;
         }
@@ -143,13 +151,16 @@
                 body: JSON.stringify({
                     full_name: fullName,
                     rank: rank,
-                    service_number: serviceNumber
+                    unit: unit, // <-- Передаем подразделение
+                    service_number: serviceNumber 
                 })
             });
 
             if (!response.ok) {
                 const data = await response.json();
-                throw new Error(data.detail || "Ошибка при создании");
+                let msg = data.detail;
+                if (Array.isArray(msg)) msg = msg[0].msg;
+                throw new Error(msg || "Ошибка при создании");
             }
 
             const newSm = await response.json();
@@ -157,7 +168,11 @@
             const select = document.getElementById('serviceman_id');
             const option = document.createElement('option');
             option.value = newSm.id;
-            option.text = `${newSm.full_name} (${newSm.rank}, ${newSm.service_number})`;
+            
+            // Формируем красивую строку для выпадающего списка
+            const jeton = newSm.service_number ? newSm.service_number : 'без жетона';
+            option.text = `${newSm.full_name} (${newSm.rank}, ${newSm.unit}, ${jeton})`;
+            
             select.appendChild(option);
             select.value = newSm.id;
             

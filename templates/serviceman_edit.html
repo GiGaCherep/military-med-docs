@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Редактирование — {{ sm.full_name }} — Military Med Docs</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container-narrow">
+    <div class="topbar">
+        <h1>Редактировать данные</h1>
+        <a href="/servicemen/{{ sm.id }}" class="btn btn-secondary">Отмена</a>
+    </div>
+    
+    {% if error %}
+        <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    <form class="card" action="/servicemen/{{ sm.id }}/edit" method="post">
+        <div class="field">
+            <label for="full_name">ФИО *</label>
+            <input type="text" id="full_name" name="full_name" value="{{ sm.full_name }}" required>
+        </div>
+        
+        <div class="field-row">
+            <div class="field">
+                <label for="rank">Воинское звание *</label>
+                <input type="text" id="rank" name="rank" value="{{ sm.rank }}" required>
+            </div>
+            <div class="field">
+                <label for="service_number">Номер жетона</label>
+                <input type="text" id="service_number" name="service_number" value="{{ sm.service_number or '' }}" placeholder="АБ-123456 (необязательно)">
+            </div>
+        </div>
+        
+        <div class="field">
+            <label for="callsign">Позывной</label>
+            <input type="text" id="callsign" name="callsign" value="{{ sm.callsign or '' }}" placeholder="Например, Сокол">
+        </div>
+
+        <div class="field-row">
+            <div class="field">
+                <label for="unit">Подразделение *</label>
+                <input type="text" id="unit" name="unit" value="{{ sm.unit }}" required>
+            </div>
+            <div class="field">
+                <label for="military_unit">Воинская часть *</label>
+                <input type="text" id="military_unit" name="military_unit" value="{{ sm.military_unit }}" required>
+            </div>
+        </div>
+
+        <div class="field-row">
+            <div class="field">
+                <label for="blood_type">Группа крови</label>
+                <select id="blood_type" name="blood_type">
+                    <option value="">— неизвестно —</option>
+                    {% set blood_types = ['I (0) Rh+', 'I (0) Rh-', 'II (A) Rh+', 'II (A) Rh-', 'III (B) Rh+', 'III (B) Rh-', 'IV (AB) Rh+', 'IV (AB) Rh-'] %}
+                    {% for bt in blood_types %}
+                        <option value="{{ bt }}" {% if sm.blood_type == bt %}selected{% endif %}>{{ bt }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field">
+                <label for="allergies">Аллергии / особенности</label>
+                <input type="text" id="allergies" name="allergies" value="{{ sm.allergies or '' }}" placeholder="Пенициллин, лидокаин">
+            </div>
+        </div>
+
+        <div class="field">
+            <label class="checkbox-row">
+                <input type="checkbox" name="is_active" value="1" {% if sm.is_active %}checked{% endif %}>
+                Военнослужащий активен (участвует в списках)
+            </label>
+        </div>
+        
+        <div class="edit-actions">
+            <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+            <a href="/servicemen/{{ sm.id }}" class="btn btn-secondary">Отмена</a>
+        </div>
+    </form>
+</div>
+</body>
+</html>

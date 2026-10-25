@@ -21,6 +21,7 @@
     <table>
         <thead>
             <tr>
+                <th style="width: 50px;">№</th>
                 <th>Дата/Время</th>
                 <th>Военнослужащий</th>
                 <th>Диагноз (МКБ)</th>
@@ -31,6 +32,7 @@
         <tbody>
             {% for r in records %}
             <tr>
+                <td>{{ loop.index }}</td>
                 <td>{{ r.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
                 <td>
                     <a href="/servicemen/{{ r.serviceman.id }}" class="username-link"><strong>{{ r.serviceman.full_name }}</strong></a><br>

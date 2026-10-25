@@ -13,8 +13,10 @@ for p in (str(_file.parent.parent), str(_file.parent)):
         sys.path.insert(0, str(p))
 # -----------------------
 
+# ИМПОРТЫ ВАШИХ МОДУЛЕЙ И БИБЛИОТЕК
+import pdf_reports
 from fastapi import Depends, FastAPI, File, Form, Request, UploadFile, status, HTTPException, Body
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.exception_handlers import http_exception_handler
@@ -52,7 +54,6 @@ app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 @app.exception_handler(StarletteHTTPException)
 async def custom_http_exception_handler(request: Request, exc: StarletteHTTPException):
     if exc.status_code == 401 and not request.url.path.startswith("/api/"):
-        # Если сессия истекла, редиректим на логин с сообщением
         return RedirectResponse(url="/?message=Сессия+истекла.+Пожалуйста,+войдите+снова.", status_code=303)
     return await http_exception_handler(request, exc)
 
@@ -157,10 +158,10 @@ async def reports_page(
     request: Request, 
     start_date: str = "", 
     end_date: str = "", 
+    report_type: str = "all",
     db: Session = Depends(get_db), 
     current_user: User = Depends(get_current_user_web)
 ):
-    # Парсинг дат
     start = None
     end = None
     if start_date:
@@ -170,34 +171,84 @@ async def reports_page(
         try: end = datetime.strptime(end_date, "%Y-%m-%d").date()
         except ValueError: pass
 
-    # Базовые запросы
-    q_outpatient = db.query(OutpatientRecord)
-    q_medical = db.query(MedicalRecord)
-    q_meds = db.query(StockTransaction).options(joinedload(StockTransaction.medication), joinedload(StockTransaction.serviceman)).filter(StockTransaction.amount < 0)
+    outpatients = []
+    medicals = []
+    meds = []
 
-    # Применяем фильтры
-    if start:
-        q_outpatient = q_outpatient.filter(OutpatientRecord.visit_date >= start)
-        q_medical = q_medical.filter(func.date(MedicalRecord.created_at) >= start)
-        q_meds = q_meds.filter(func.date(StockTransaction.created_at) >= start)
-    if end:
-        q_outpatient = q_outpatient.filter(OutpatientRecord.visit_date <= end)
-        q_medical = q_medical.filter(func.date(MedicalRecord.created_at) <= end)
-        q_meds = q_meds.filter(func.date(StockTransaction.created_at) <= end)
+    if report_type in ["all", "outpatient"]:
+        q_outpatient = db.query(OutpatientRecord).options(joinedload(OutpatientRecord.serviceman), joinedload(OutpatientRecord.doctor))
+        if start: q_outpatient = q_outpatient.filter(OutpatientRecord.visit_date >= start)
+        if end: q_outpatient = q_outpatient.filter(OutpatientRecord.visit_date <= end)
+        outpatients = q_outpatient.order_by(OutpatientRecord.visit_date.desc()).all()
 
-    outpatients = q_outpatient.order_by(OutpatientRecord.visit_date.desc()).all()
-    medicals = q_medical.order_by(MedicalRecord.created_at.desc()).all()
-    meds = q_meds.order_by(StockTransaction.created_at.desc()).all()
+    if report_type in ["all", "medical"]:
+        q_medical = db.query(MedicalRecord).options(joinedload(MedicalRecord.serviceman), joinedload(MedicalRecord.doctor))
+        if start: q_medical = q_medical.filter(func.date(MedicalRecord.created_at) >= start)
+        if end: q_medical = q_medical.filter(func.date(MedicalRecord.created_at) <= end)
+        medicals = q_medical.order_by(MedicalRecord.created_at.desc()).all()
+
+    if report_type in ["all", "meds"]:
+        q_meds = db.query(StockTransaction).options(joinedload(StockTransaction.medication), joinedload(StockTransaction.serviceman), joinedload(StockTransaction.user)).filter(StockTransaction.amount < 0)
+        if start: q_meds = q_meds.filter(func.date(StockTransaction.created_at) >= start)
+        if end: q_meds = q_meds.filter(func.date(StockTransaction.created_at) <= end)
+        meds = q_meds.order_by(StockTransaction.created_at.desc()).all()
 
     return render(
         "reports.html", request,
         current_user=current_user,
         start_date=start_date,
         end_date=end_date,
+        report_type=report_type,
         outpatients=outpatients,
         medicals=medicals,
         meds=meds
     )
+
+@app.get("/reports/export")
+async def export_reports_pdf(
+    start_date: str = "", 
+    end_date: str = "", 
+    report_type: str = "all",
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user_web)
+):
+    start = None
+    end = None
+    if start_date:
+        try: start = datetime.strptime(start_date, "%Y-%m-%d").date()
+        except ValueError: pass
+    if end_date:
+        try: end = datetime.strptime(end_date, "%Y-%m-%d").date()
+        except ValueError: pass
+
+    outpatients = []
+    medicals = []
+    meds = []
+
+    if report_type in ["all", "outpatient"]:
+        q_outpatient = db.query(OutpatientRecord).options(joinedload(OutpatientRecord.serviceman))
+        if start: q_outpatient = q_outpatient.filter(OutpatientRecord.visit_date >= start)
+        if end: q_outpatient = q_outpatient.filter(OutpatientRecord.visit_date <= end)
+        outpatients = q_outpatient.order_by(OutpatientRecord.visit_date.desc()).all()
+
+    if report_type in ["all", "medical"]:
+        q_medical = db.query(MedicalRecord).options(joinedload(MedicalRecord.serviceman))
+        if start: q_medical = q_medical.filter(func.date(MedicalRecord.created_at) >= start)
+        if end: q_medical = q_medical.filter(func.date(MedicalRecord.created_at) <= end)
+        medicals = q_medical.order_by(MedicalRecord.created_at.desc()).all()
+
+    if report_type in ["all", "meds"]:
+        q_meds = db.query(StockTransaction).options(joinedload(StockTransaction.medication), joinedload(StockTransaction.serviceman), joinedload(StockTransaction.user)).filter(StockTransaction.amount < 0)
+        if start: q_meds = q_meds.filter(func.date(StockTransaction.created_at) >= start)
+        if end: q_meds = q_meds.filter(func.date(StockTransaction.created_at) <= end)
+        meds = q_meds.order_by(StockTransaction.created_at.desc()).all()
+
+    pdf_buffer = pdf_reports.generate_pdf_report(outpatients, medicals, meds, start_date, end_date, report_type)
+
+    headers = {
+        'Content-Disposition': 'attachment; filename="report.pdf"'
+    }
+    return StreamingResponse(pdf_buffer, media_type="application/pdf", headers=headers)
 
 
 # --- Документы ---
@@ -384,6 +435,7 @@ async def serviceman_new_submit(
     audit(db, current_user, "serviceman.create", "serviceman", sm.id, {"name": full_name})
     db.commit()
     return RedirectResponse(url="/servicemen?message=Военнослужащий+добавлен", status_code=303)
+
 @app.get("/servicemen/{serviceman_id}/edit", response_class=HTMLResponse)
 async def serviceman_edit_form(
     serviceman_id: int,
@@ -1130,7 +1182,7 @@ async def api_serviceman_quick_add(
     full_name: str = Body(...),
     rank: str = Body(...),
     service_number: str = Body(""),
-    unit: str = Body(""),  # <--- ДОБАВЛЕНО
+    unit: str = Body(""),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_web)
 ):
@@ -1140,7 +1192,7 @@ async def api_serviceman_quick_add(
     sm = Serviceman(
         full_name=full_name, rank=rank, 
         service_number=service_number or None,
-        unit=unit or "Не указано",           # <--- ИСПОЛЬЗУЕМ
+        unit=unit or "Не указано",
         military_unit="Не указано"
     )
     db.add(sm)

@@ -7,8 +7,8 @@
     <style>
         .report-section { margin-bottom: 2rem; }
         .report-section h2 { color: #005f73; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
-        .filter-form { display: flex; gap: 1rem; align-items: flex-end; margin-bottom: 2rem; background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .filter-form .field { margin-bottom: 0; flex: 1; }
+        .filter-form { display: flex; gap: 1rem; align-items: flex-end; margin-bottom: 2rem; background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); flex-wrap: wrap; }
+        .filter-form .field { margin-bottom: 0; flex: 1; min-width: 150px; }
     </style>
 </head>
 <body>
@@ -20,6 +20,15 @@
 
     <form action="/reports" method="get" class="filter-form">
         <div class="field">
+            <label for="report_type">Тип отчета:</label>
+            <select id="report_type" name="report_type">
+                <option value="all" {% if report_type == 'all' %}selected{% endif %}>Все отчеты</option>
+                <option value="outpatient" {% if report_type == 'outpatient' %}selected{% endif %}>Только амбулаторные</option>
+                <option value="medical" {% if report_type == 'medical' %}selected{% endif %}>Только медзаписи</option>
+                <option value="meds" {% if report_type == 'meds' %}selected{% endif %}>Только выдача лекарств</option>
+            </select>
+        </div>
+        <div class="field">
             <label for="start_date">Дата с:</label>
             <input type="date" id="start_date" name="start_date" value="{{ start_date }}">
         </div>
@@ -28,12 +37,19 @@
             <input type="date" id="end_date" name="end_date" value="{{ end_date }}">
         </div>
         <button type="submit" class="btn btn-primary">Применить фильтр</button>
-        {% if start_date or end_date %}
+        
+        <!-- Кнопка экспорта передает те же параметры через форму -->
+        <button type="submit" formaction="/reports/export" formmethod="get" class="btn btn-secondary" style="background: #b00020; color: white;">
+            📄 Экспорт в PDF
+        </button>
+
+        {% if start_date or end_date or report_type != 'all' %}
             <a href="/reports" class="btn btn-secondary">Сбросить</a>
         {% endif %}
     </form>
 
-    <!-- Отчет по амбулаторным больным -->
+    <!-- 1. Отчет по амбулаторным больным -->
+    {% if report_type in ['all', 'outpatient'] %}
     <div class="report-section card">
         <h2>Амбулаторный приём ({{ outpatients|length }})</h2>
         {% if not outpatients %}
@@ -41,11 +57,12 @@
         {% else %}
             <table>
                 <thead>
-                    <tr><th>Дата</th><th>Военнослужащий</th><th>Диагноз</th><th>Исход</th><th>Врач</th></tr>
+                    <tr><th style="width: 50px;">№</th><th>Дата</th><th>Военнослужащий</th><th>Диагноз</th><th>Исход</th><th>Врач</th></tr>
                 </thead>
                 <tbody>
                     {% for r in outpatients %}
                     <tr>
+                        <td>{{ loop.index }}</td>
                         <td>{{ r.visit_date.strftime('%d.%m.%Y') }}</td>
                         <td>{{ r.serviceman.full_name }}</td>
                         <td>{{ r.diagnosis }}</td>
@@ -57,8 +74,10 @@
             </table>
         {% endif %}
     </div>
+    {% endif %}
 
-    <!-- Отчет по стационару/приему в МП -->
+    <!-- 2. Отчет по стационару/приему в МП -->
+    {% if report_type in ['all', 'medical'] %}
     <div class="report-section card">
         <h2>Медицинские записи ({{ medicals|length }})</h2>
         {% if not medicals %}
@@ -66,11 +85,12 @@
         {% else %}
             <table>
                 <thead>
-                    <tr><th>Дата</th><th>Военнослужащий</th><th>Тип</th><th>Диагноз</th><th>Помощь</th><th>Врач</th></tr>
+                    <tr><th style="width: 50px;">№</th><th>Дата</th><th>Военнослужащий</th><th>Тип</th><th>Диагноз</th><th>Помощь</th><th>Врач</th></tr>
                 </thead>
                 <tbody>
                     {% for r in medicals %}
                     <tr>
+                        <td>{{ loop.index }}</td>
                         <td>{{ r.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
                         <td>{{ r.serviceman.full_name }}</td>
                         <td>{{ r.record_type }}</td>
@@ -83,8 +103,10 @@
             </table>
         {% endif %}
     </div>
+    {% endif %}
 
-    <!-- Отчет по списанию медикаментов -->
+    <!-- 3. Отчет по списанию медикаментов -->
+    {% if report_type in ['all', 'meds'] %}
     <div class="report-section card">
         <h2>Выдача медикаментов ({{ meds|length }})</h2>
         {% if not meds %}
@@ -92,11 +114,12 @@
         {% else %}
             <table>
                 <thead>
-                    <tr><th>Дата</th><th>Препарат</th><th>Кому выдано</th><th>Количество</th><th>Причина</th><th>Кто выдал</th></tr>
+                    <tr><th style="width: 50px;">№</th><th>Дата</th><th>Препарат</th><th>Кому выдано</th><th>Количество</th><th>Причина</th><th>Кто выдал</th></tr>
                 </thead>
                 <tbody>
                     {% for t in meds %}
                     <tr>
+                        <td>{{ loop.index }}</td>
                         <td>{{ t.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
                         <td>{{ t.medication.name }}</td>
                         <td>
@@ -115,6 +138,7 @@
             </table>
         {% endif %}
     </div>
+    {% endif %}
 </div>
 </body>
 </html>

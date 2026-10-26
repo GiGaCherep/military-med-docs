@@ -20,17 +20,25 @@
     {% if message %}<div class="alert alert-success">{{ message }}</div>{% endif %}
     {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
 
-    <!-- Форма поиска и фильтра -->
+    <!-- Форма поиска, фильтрации и сортировки -->
     <form action="/pharmacy" method="get" style="display: flex; gap: 10px; margin-bottom: 2rem; flex-wrap: wrap;">
-        <input type="text" name="q" value="{{ q }}" placeholder="Поиск по названию..." class="search-input" style="flex: 2;">
-        <select name="category_id" class="search-input" style="flex: 1; padding: 0.6rem; border: 1px solid #ccc; border-radius: 4px;">
+        <input type="text" name="q" value="{{ q }}" placeholder="Поиск по названию, описанию или показаниям..." class="search-input" style="flex: 2; min-width: 200px;">
+        
+        <select name="category_id" class="search-input" style="flex: 1; min-width: 150px; padding: 0.6rem; border: 1px solid #ccc; border-radius: 4px;">
             <option value="">Все группы</option>
             {% for c in categories %}
                 <option value="{{ c.id }}" {% if selected_category == c.id %}selected{% endif %}>{{ c.name }}</option>
             {% endfor %}
         </select>
+
+        <select name="sort_by" class="search-input" style="flex: 1; min-width: 150px; padding: 0.6rem; border: 1px solid #ccc; border-radius: 4px;">
+            <option value="name" {% if sort_by == 'name' %}selected{% endif %}>Сортировка: По названию</option>
+            <option value="category" {% if sort_by == 'category' %}selected{% endif %}>Сортировка: По группе</option>
+            <option value="location" {% if sort_by == 'location' %}selected{% endif %}>Сортировка: По месту хранения</option>
+        </select>
+
         <button type="submit" class="btn btn-primary">Найти</button>
-        {% if q or selected_category %}
+        {% if q or selected_category or sort_by != 'name' %}
             <a href="/pharmacy" class="btn btn-secondary">Сбросить</a>
         {% endif %}
     </form>

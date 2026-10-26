@@ -764,6 +764,7 @@ async def pharmacy_index(
     request: Request, 
     q: str = "", 
     category_id: str = "",
+    sort_by: str = "name", 
     db: Session = Depends(get_db), 
     current_user: User = Depends(get_current_user_web)
 ):
@@ -779,11 +780,23 @@ async def pharmacy_index(
         query = query.filter(Medication.category_id == selected_category)
     
     if q:
-        query = query.filter(Medication.name.ilike(f"%{q}%"))
+        search = f"%{q}%"
+        query = query.filter(
+            or_(
+                Medication.name.ilike(search),
+                Medication.description.ilike(search),
+                Medication.indications.ilike(search)  # <-- ДОБАВЛЕН ПОИСК ПО ПОКАЗАНИЯМ
+            )
+        )
         if not query.first() and not selected_category:
             ai_result = pharma_service.search_disease_info(q)
 
-    medications = query.order_by(Medication.name).all()
+    if sort_by == "category":
+        medications = query.outerjoin(MedicationCategory).order_by(MedicationCategory.name, Medication.name).all()
+    elif sort_by == "location":
+        medications = query.outerjoin(StorageLocation).order_by(StorageLocation.name, Medication.name).all()
+    else:
+        medications = query.order_by(Medication.name).all()
 
     return render(
         "pharmacy/index.html", request, 
@@ -793,6 +806,7 @@ async def pharmacy_index(
         ai_result=ai_result, 
         categories=categories, 
         selected_category=selected_category,
+        sort_by=sort_by,
         message=request.query_params.get("message"),
         error=request.query_params.get("error")
     )
